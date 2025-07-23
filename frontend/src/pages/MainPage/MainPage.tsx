@@ -8,6 +8,7 @@ function MainPage() {
         buildingTypeID: 0,
         subRoomType1ID: 0,
         subRoomType2ID: 0,
+        airConditionerTypeID: 0,
     })
 
     const [formData, setFormData] = useState({
@@ -21,7 +22,7 @@ function MainPage() {
         roofSunDirectionsId: ['0']
     })
 
-    const [tabValue, setTabValue] = useState("two");
+    const [tabValue, setTabValue] = useState("one");
 
     const buildingType = [
         { id: 1, title: 'Home', image: '/images/option/home.png' },
@@ -37,6 +38,12 @@ function MainPage() {
         { id: 1, title: 'สำนักงาน', image: '/images/option/office.png' },
         { id: 2, title: 'ร้านค้า', image: '/images/option/store.png' },
         { id: 3, title: 'ร้านอาหาร', image: '/images/option/restaurant.png' },
+    ]
+
+    const airConditionerTypes = [
+        { id: 1, title: 'Wall Type', image: '/images/option/wall_type.png'},
+        { id: 2, title: 'Ceiling Suspended Type', image: '/images/option/ceiling_suspended_type.png'},
+        { id: 3, title: 'Cassette Type', image: '/images/option/cassette_type.png'},
     ]
 
     const handleClickNext = () => {
@@ -122,6 +129,15 @@ function MainPage() {
     })
 
     console.log(formData)
+    const filterAirConditionerTypes = airConditionerTypes.filter((item)=> {
+        if (formData.ceilingAreaId[0] === '3'){
+            return String(item.id) === '1'
+        } else if (formData.ceilingAreaId[0] === '2') {
+            return String(item.id) !== '3'
+        } else {
+            return item
+        }
+    })
 
     return (
         <Box className="main-page-container">
@@ -958,7 +974,52 @@ function MainPage() {
                         </Box>
                     </Tabs.Content>
                     <Tabs.Content value={'three'}>
-                        Manage your tasks for freelancers
+                        <Box>
+                            <Heading size={'2xl'} color={'#003475'} marginBottom={4}>เลือกประเภทเครื่องปรับอากาศ</Heading>
+                            <Heading size={'lg'} color={'#003475'}>ประเภทเครื่องปรับอากาศที่แนะนำ</Heading>
+                            <Grid
+                                gridTemplateColumns={'repeat(3, 1fr)'}
+                                gap={10}
+                                padding={'1.4rem 2rem '}
+                                color={'#71b0ff'}
+                                fontSize={36}
+                                fontWeight={700}
+                                textShadow={'2px 2px 4px #000000'}
+                                fontStyle="italic"
+                            >
+                                {
+                                    filterAirConditionerTypes.map((item, index) => {
+                                        return (
+                                            <GridItem
+                                                key={index}
+                                                _hover={{ transform: "translate(0%, -2%)" }}
+                                                transition={'all ease 0.5s'}
+                                                onClick={() => setSelectedOption((prev) => ({ ...prev, airConditionerTypeID: item.id }))}
+                                            >
+                                                <Box position={'relative'}>
+                                                    <Image
+                                                        rounded="md"
+                                                        src={item.image}
+                                                        border={
+                                                            selectedOption.airConditionerTypeID === item.id ? '4px solid #fe7743' : '2px solid transparent'
+                                                        }
+                                                        height={350}
+                                                    />
+                                                    <Text
+                                                        position={'absolute'}
+                                                        top="70%"
+                                                        left="50%"
+                                                        transform="translate(-50%, -50%)"
+                                                        width={'100%'}
+                                                        textAlign={'center'}
+                                                    >{item.title}</Text>
+                                                </Box>
+                                            </GridItem>
+                                        )
+                                    })
+                                }
+                            </Grid>
+                        </Box>
                     </Tabs.Content>
                 </Tabs.Root>
                 <Collapsible.Root open={selectedOption.buildingTypeID != 0}>
