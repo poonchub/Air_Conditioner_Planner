@@ -1,6 +1,7 @@
 import { Box, Button, Collapsible, Container, createListCollection, Field, Flex, Grid, GridItem, Heading, Image, Input, Portal, Select, Table, Tabs, Text } from "@chakra-ui/react"
 import { useState } from "react"
 import { LuFolder, LuSquareCheck, LuUser } from "react-icons/lu"
+import './MainPage.css'
 
 function MainPage() {
     const [selectedOption, setSelectedOption] = useState({
@@ -15,7 +16,9 @@ function MainPage() {
         ceilingAreaId: ['0'],
         startUseTime: [''],
         endUseTime: [''],
-        directionId: ['0'],
+        wallSunlightDirectionsId: ['0'],
+        roofShapeId: ['0'],
+        roofSunDirectionsId: ['0']
     })
 
     const [tabValue, setTabValue] = useState("two");
@@ -100,7 +103,7 @@ function MainPage() {
 
     const hourOptions = createListCollection({
         items: Array.from({ length: 24 }, (_, i) => {
-            const hour = i.toString().padStart(2, '0')
+            const hour = (i + 1).toString().padStart(2, '0')
             return {
                 value: hour,          // ต้องเป็น string
                 label: `${hour}:00 น.`,
@@ -108,16 +111,20 @@ function MainPage() {
         }),
     })
 
-    const items = [
-        { id: 1, name: "Laptop", category: "Electronics", price: 999.99 },
-        { id: 2, name: "Coffee Maker", category: "Home Appliances", price: 49.99 },
-        { id: 3, name: "Desk Chair", category: "Furniture", price: 150.0 },
-        { id: 4, name: "Smartphone", category: "Electronics", price: 799.99 },
-        { id: 5, name: "Headphones", category: "Accessories", price: 199.99 },
-    ]
+    const roofShapes = createListCollection({
+        items: [
+            { label: "หลังคาทรงหน้าจั่ว", value: "1" },
+            { label: "หลังคาทรงหมาแหงน", value: "2" },
+            { label: "หลังคาปั้นหยา", value: "3" },
+            { label: "หลังคาทรงแบน", value: "4" },
+            { label: "อื่น ๆ", value: "5" },
+        ],
+    })
+
+    console.log(formData)
 
     return (
-        <Box>
+        <Box className="main-page-container">
             <Box
                 width={'100%'}
                 padding={'5rem 2rem'}
@@ -280,7 +287,11 @@ function MainPage() {
                                 gap={10}
                                 padding={'1.4rem 2rem '}
                             >
-                                <GridItem border={'1px solid #c5c5c6'} borderRadius={10} padding={5}>
+                                <GridItem
+                                    border={'1px solid #c5c5c6'}
+                                    borderRadius={10}
+                                    padding={5}
+                                >
                                     <Grid
                                         gridTemplateColumns={'repeat(2, 1fr)'}
                                         gap={5}
@@ -475,10 +486,11 @@ function MainPage() {
                                             <Select.Root
                                                 multiple
                                                 collection={directions}
-                                                value={formData.directionId}
-                                                onValueChange={(e) =>
-                                                    setFormData((prev) => ({ ...prev, directionId: e.value }))
-                                                }
+                                                value={formData.wallSunlightDirectionsId}
+                                                onValueChange={(e) => {
+                                                    const selected = e.value.length > 0 ? e.value.filter((val) => val !== '0') : ['0'];
+                                                    setFormData((prev) => ({ ...prev, wallSunlightDirectionsId: selected }));
+                                                }}
                                             >
                                                 <Select.HiddenSelect />
                                                 <Select.Label>ระบุทิศผนังที่โดนแดดและไม่ติดกับห้องอื่น (เลือกได้มากกว่า1)</Select.Label>
@@ -518,7 +530,7 @@ function MainPage() {
                                                         </Table.Row>
                                                     </Table.Header>
                                                     <Table.Body>
-                                                        {formData.directionId.map((id) => {
+                                                        {formData.wallSunlightDirectionsId.map((id) => {
                                                             const direction = directions.items.find((item) => item.value === id)
 
                                                             return direction && (
@@ -563,15 +575,385 @@ function MainPage() {
                                         </GridItem>
                                     </Grid>
                                 </GridItem>
-                                <GridItem border={'1px solid #c5c5c6'} borderRadius={10} padding={5}>
-                                    C
-                                </GridItem>
-                                <GridItem border={'1px solid #c5c5c6'} borderRadius={10} padding={5}>
-                                    D
-                                </GridItem>
-                                <GridItem border={'1px solid #c5c5c6'} borderRadius={10} padding={5}>
-                                    E
-                                </GridItem>
+
+                                {
+                                    formData.locationAreaId[0] === '1' &&
+                                    <Collapsible.Root open={formData.locationAreaId[0] === '1'}>
+                                        <Collapsible.Content height={'100%'}>
+                                            <GridItem border={'1px solid #c5c5c6'} borderRadius={10} padding={5} height={'100%'}>
+                                                <Grid
+                                                    // gridTemplateColumns={'repeat(1, 1fr)'}
+                                                    gap={5}
+                                                >
+                                                    <GridItem>
+                                                        <Field.Root>
+                                                            <Field.Label>
+                                                                หลังคา
+                                                            </Field.Label>
+                                                            <Select.Root
+                                                                collection={roofShapes}
+                                                                value={formData.roofShapeId}
+                                                                onValueChange={(e) =>
+                                                                    setFormData((prev) => ({ ...prev, roofShapeId: e.value }))
+                                                                }
+                                                            >
+                                                                <Select.HiddenSelect />
+                                                                <Select.Label>ระบุรูปทรงหลังคา</Select.Label>
+                                                                <Select.Control>
+                                                                    <Select.Trigger>
+                                                                        <Select.ValueText placeholder="ระบุรูปทรงหลังคา" />
+                                                                    </Select.Trigger>
+                                                                    <Select.IndicatorGroup>
+                                                                        <Select.Indicator />
+                                                                    </Select.IndicatorGroup>
+                                                                </Select.Control>
+                                                                <Portal>
+                                                                    <Select.Positioner>
+                                                                        <Select.Content>
+                                                                            {roofShapes.items.map((item) => (
+                                                                                <Select.Item item={item.value} key={item.value}>
+                                                                                    {item.label}
+                                                                                </Select.Item>
+                                                                            ))}
+                                                                        </Select.Content>
+                                                                    </Select.Positioner>
+                                                                </Portal>
+                                                            </Select.Root>
+                                                        </Field.Root>
+                                                    </GridItem>
+                                                    <GridItem>
+                                                        <Select.Root
+                                                            multiple
+                                                            collection={directions}
+                                                            value={formData.roofSunDirectionsId}
+                                                            onValueChange={(e) => {
+                                                                const selected = e.value.length > 0 ? e.value.filter((val) => val !== '0') : ['0'];
+                                                                setFormData((prev) => ({ ...prev, roofSunDirectionsId: selected }));
+                                                            }}
+                                                        >
+                                                            <Select.HiddenSelect />
+                                                            <Select.Label>ระบุทิศที่โดนแสงแดด (เลือกได้มากกว่า1)</Select.Label>
+                                                            <Select.Control>
+                                                                <Select.Trigger>
+                                                                    <Select.ValueText placeholder="เลือกทิศ" />
+                                                                </Select.Trigger>
+                                                                <Select.IndicatorGroup>
+                                                                    <Select.ClearTrigger />
+                                                                    <Select.Indicator />
+                                                                </Select.IndicatorGroup>
+                                                            </Select.Control>
+                                                            <Portal>
+                                                                <Select.Positioner>
+                                                                    <Select.Content>
+                                                                        {directions.items.map((item) => (
+                                                                            <Select.Item item={item.value} key={item.value}>
+                                                                                {item.label}
+                                                                                <Select.ItemIndicator />
+                                                                            </Select.Item>
+                                                                        ))}
+                                                                    </Select.Content>
+                                                                </Select.Positioner>
+                                                            </Portal>
+                                                        </Select.Root>
+                                                    </GridItem>
+                                                    <GridItem>
+                                                        <Table.Root size="sm" variant={"outline"}>
+                                                            <Table.Header>
+                                                                <Table.Row >
+                                                                    <Table.ColumnHeader fontWeight={600} textAlign={'center'}>ทิศหลังคา</Table.ColumnHeader>
+                                                                    <Table.ColumnHeader fontWeight={600} textAlign={'center'}>วัสดุ</Table.ColumnHeader>
+                                                                    <Table.ColumnHeader fontWeight={600} textAlign={'center'}>สีภายนอก</Table.ColumnHeader>
+                                                                </Table.Row>
+                                                            </Table.Header>
+                                                            <Table.Body>
+                                                                {formData.roofSunDirectionsId.map((id) => {
+                                                                    const direction = directions.items.find((item) => item.value === id)
+
+                                                                    return direction && (
+                                                                        <Table.Row key={direction?.value}>
+                                                                            <Table.Cell textAlign={'center'}>{direction?.label}</Table.Cell>
+                                                                            <Table.Cell>
+                                                                                <Select.Root
+                                                                                    collection={roofShapes}
+                                                                                // value={formData.roofShapeId}
+                                                                                // onValueChange={(e) =>
+                                                                                //     setFormData((prev) => ({ ...prev, roofShapeId: e.value }))
+                                                                                // }
+                                                                                >
+                                                                                    <Select.HiddenSelect />
+                                                                                    {/* <Select.Label>ระบุรูปทรงหลังคา</Select.Label> */}
+                                                                                    <Select.Control>
+                                                                                        <Select.Trigger>
+                                                                                            <Select.ValueText placeholder="ระบุวัสดุ" />
+                                                                                        </Select.Trigger>
+                                                                                        <Select.IndicatorGroup>
+                                                                                            <Select.Indicator />
+                                                                                        </Select.IndicatorGroup>
+                                                                                    </Select.Control>
+                                                                                    <Portal>
+                                                                                        <Select.Positioner>
+                                                                                            <Select.Content>
+                                                                                                {/* {roofShapes.items.map((item) => (
+                                                                                                    <Select.Item item={item.value} key={item.value}>
+                                                                                                        {item.label}
+                                                                                                    </Select.Item>
+                                                                                                ))} */}
+                                                                                            </Select.Content>
+                                                                                        </Select.Positioner>
+                                                                                    </Portal>
+                                                                                </Select.Root>
+                                                                            </Table.Cell>
+                                                                            <Table.Cell>
+                                                                                <Select.Root
+                                                                                    collection={roofShapes}
+                                                                                // value={formData.roofShapeId}
+                                                                                // onValueChange={(e) =>
+                                                                                //     setFormData((prev) => ({ ...prev, roofShapeId: e.value }))
+                                                                                // }
+                                                                                >
+                                                                                    <Select.HiddenSelect />
+                                                                                    {/* <Select.Label>ระบุรูปทรงหลังคา</Select.Label> */}
+                                                                                    <Select.Control>
+                                                                                        <Select.Trigger>
+                                                                                            <Select.ValueText placeholder="ระบุสีภายนอก" />
+                                                                                        </Select.Trigger>
+                                                                                        <Select.IndicatorGroup>
+                                                                                            <Select.Indicator />
+                                                                                        </Select.IndicatorGroup>
+                                                                                    </Select.Control>
+                                                                                    <Portal>
+                                                                                        <Select.Positioner>
+                                                                                            <Select.Content>
+                                                                                                {/* {roofShapes.items.map((item) => (
+                                                                                                    <Select.Item item={item.value} key={item.value}>
+                                                                                                        {item.label}
+                                                                                                    </Select.Item>
+                                                                                                ))} */}
+                                                                                            </Select.Content>
+                                                                                        </Select.Positioner>
+                                                                                    </Portal>
+                                                                                </Select.Root>
+                                                                            </Table.Cell>
+                                                                        </Table.Row>
+                                                                    )
+                                                                })}
+                                                            </Table.Body>
+                                                        </Table.Root>
+                                                    </GridItem>
+                                                </Grid>
+                                            </GridItem>
+                                        </Collapsible.Content>
+                                    </Collapsible.Root>
+                                }
+
+                                {
+                                    formData.wallSunlightDirectionsId[0] !== '0' &&
+                                    <Collapsible.Root open={formData.wallSunlightDirectionsId[0] !== '0'}>
+                                        <Collapsible.Content height={'100%'}>
+                                            <GridItem border={'1px solid #c5c5c6'} borderRadius={10} padding={5} height={'100%'}>
+                                                <Grid gap={5}>
+                                                    <GridItem colSpan={1}>
+                                                        <Field.Root>
+                                                            <Field.Label>
+                                                                ผนัง
+                                                            </Field.Label>
+                                                            <Field.Label>
+                                                                โปรดระบุข้อมูล
+                                                            </Field.Label>
+                                                            <Table.Root size="sm" variant={"outline"}>
+                                                                <Table.Header>
+                                                                    <Table.Row >
+                                                                        <Table.ColumnHeader fontWeight={600} textAlign={'center'}>ทิศหลังคา</Table.ColumnHeader>
+                                                                        <Table.ColumnHeader fontWeight={600} textAlign={'center'}>วัสดุ</Table.ColumnHeader>
+                                                                        <Table.ColumnHeader fontWeight={600} textAlign={'center'}>สีภายนอก</Table.ColumnHeader>
+                                                                    </Table.Row>
+                                                                </Table.Header>
+                                                                <Table.Body>
+                                                                    {formData.wallSunlightDirectionsId.map((id) => {
+                                                                        const direction = directions.items.find((item) => item.value === id)
+
+                                                                        return direction && (
+                                                                            <Table.Row key={direction?.value}>
+                                                                                <Table.Cell textAlign={'center'}>{direction?.label}</Table.Cell>
+                                                                                <Table.Cell>
+                                                                                    <Select.Root
+                                                                                        collection={directions}
+                                                                                    // value={formData.roofShapeId}
+                                                                                    // onValueChange={(e) =>
+                                                                                    //     setFormData((prev) => ({ ...prev, roofShapeId: e.value }))
+                                                                                    // }
+                                                                                    >
+                                                                                        <Select.HiddenSelect />
+                                                                                        {/* <Select.Label>ระบุรูปทรงหลังคา</Select.Label> */}
+                                                                                        <Select.Control>
+                                                                                            <Select.Trigger>
+                                                                                                <Select.ValueText placeholder="ระบุวัสดุ" />
+                                                                                            </Select.Trigger>
+                                                                                            <Select.IndicatorGroup>
+                                                                                                <Select.Indicator />
+                                                                                            </Select.IndicatorGroup>
+                                                                                        </Select.Control>
+                                                                                        <Portal>
+                                                                                            <Select.Positioner>
+                                                                                                <Select.Content>
+                                                                                                    {/* {roofShapes.items.map((item) => (
+                                                                                                    <Select.Item item={item.value} key={item.value}>
+                                                                                                        {item.label}
+                                                                                                    </Select.Item>
+                                                                                                ))} */}
+                                                                                                </Select.Content>
+                                                                                            </Select.Positioner>
+                                                                                        </Portal>
+                                                                                    </Select.Root>
+                                                                                </Table.Cell>
+                                                                                <Table.Cell>
+                                                                                    <Select.Root
+                                                                                        collection={directions}
+                                                                                    // value={formData.roofShapeId}
+                                                                                    // onValueChange={(e) =>
+                                                                                    //     setFormData((prev) => ({ ...prev, roofShapeId: e.value }))
+                                                                                    // }
+                                                                                    >
+                                                                                        <Select.HiddenSelect />
+                                                                                        {/* <Select.Label>ระบุรูปทรงหลังคา</Select.Label> */}
+                                                                                        <Select.Control>
+                                                                                            <Select.Trigger>
+                                                                                                <Select.ValueText placeholder="ระบุสีภายนอก" />
+                                                                                            </Select.Trigger>
+                                                                                            <Select.IndicatorGroup>
+                                                                                                <Select.Indicator />
+                                                                                            </Select.IndicatorGroup>
+                                                                                        </Select.Control>
+                                                                                        <Portal>
+                                                                                            <Select.Positioner>
+                                                                                                <Select.Content>
+                                                                                                    {/* {roofShapes.items.map((item) => (
+                                                                                                    <Select.Item item={item.value} key={item.value}>
+                                                                                                        {item.label}
+                                                                                                    </Select.Item>
+                                                                                                ))} */}
+                                                                                                </Select.Content>
+                                                                                            </Select.Positioner>
+                                                                                        </Portal>
+                                                                                    </Select.Root>
+                                                                                </Table.Cell>
+                                                                            </Table.Row>
+                                                                        )
+                                                                    })}
+                                                                </Table.Body>
+                                                            </Table.Root>
+                                                        </Field.Root>
+                                                    </GridItem>
+                                                </Grid>
+                                            </GridItem>
+                                        </Collapsible.Content>
+                                    </Collapsible.Root>
+                                }
+
+                                {
+                                    formData.wallSunlightDirectionsId[0] !== '0' &&
+                                    <Collapsible.Root open={formData.wallSunlightDirectionsId[0] !== '0'}>
+                                        <Collapsible.Content height={'100%'}>
+                                            <GridItem border={'1px solid #c5c5c6'} borderRadius={10} padding={5} height={'100%'}>
+                                                <Grid gap={5}>
+                                                    <GridItem colSpan={1}>
+                                                        <Field.Root>
+                                                            <Field.Label>
+                                                                ประตู
+                                                            </Field.Label>
+                                                            <Field.Label>
+                                                                โปรดระบุข้อมูล
+                                                            </Field.Label>
+                                                            <Table.Root size="sm" variant={"outline"}>
+                                                                <Table.Header>
+                                                                    <Table.Row >
+                                                                        <Table.ColumnHeader fontWeight={600} textAlign={'center'}>ทิศหลังคา</Table.ColumnHeader>
+                                                                        <Table.ColumnHeader fontWeight={600} textAlign={'center'}>วัสดุ</Table.ColumnHeader>
+                                                                        <Table.ColumnHeader fontWeight={600} textAlign={'center'}>สีภายนอก</Table.ColumnHeader>
+                                                                    </Table.Row>
+                                                                </Table.Header>
+                                                                <Table.Body>
+                                                                    {formData.wallSunlightDirectionsId.map((id) => {
+                                                                        const direction = directions.items.find((item) => item.value === id)
+
+                                                                        return direction && (
+                                                                            <Table.Row key={direction?.value}>
+                                                                                <Table.Cell textAlign={'center'}>{direction?.label}</Table.Cell>
+                                                                                <Table.Cell>
+                                                                                    <Select.Root
+                                                                                        collection={directions}
+                                                                                    // value={formData.roofShapeId}
+                                                                                    // onValueChange={(e) =>
+                                                                                    //     setFormData((prev) => ({ ...prev, roofShapeId: e.value }))
+                                                                                    // }
+                                                                                    >
+                                                                                        <Select.HiddenSelect />
+                                                                                        {/* <Select.Label>ระบุรูปทรงหลังคา</Select.Label> */}
+                                                                                        <Select.Control>
+                                                                                            <Select.Trigger>
+                                                                                                <Select.ValueText placeholder="ระบุวัสดุ" />
+                                                                                            </Select.Trigger>
+                                                                                            <Select.IndicatorGroup>
+                                                                                                <Select.Indicator />
+                                                                                            </Select.IndicatorGroup>
+                                                                                        </Select.Control>
+                                                                                        <Portal>
+                                                                                            <Select.Positioner>
+                                                                                                <Select.Content>
+                                                                                                    {/* {roofShapes.items.map((item) => (
+                                                                                                    <Select.Item item={item.value} key={item.value}>
+                                                                                                        {item.label}
+                                                                                                    </Select.Item>
+                                                                                                ))} */}
+                                                                                                </Select.Content>
+                                                                                            </Select.Positioner>
+                                                                                        </Portal>
+                                                                                    </Select.Root>
+                                                                                </Table.Cell>
+                                                                                <Table.Cell>
+                                                                                    <Select.Root
+                                                                                        collection={directions}
+                                                                                    // value={formData.roofShapeId}
+                                                                                    // onValueChange={(e) =>
+                                                                                    //     setFormData((prev) => ({ ...prev, roofShapeId: e.value }))
+                                                                                    // }
+                                                                                    >
+                                                                                        <Select.HiddenSelect />
+                                                                                        {/* <Select.Label>ระบุรูปทรงหลังคา</Select.Label> */}
+                                                                                        <Select.Control>
+                                                                                            <Select.Trigger>
+                                                                                                <Select.ValueText placeholder="ระบุสีภายนอก" />
+                                                                                            </Select.Trigger>
+                                                                                            <Select.IndicatorGroup>
+                                                                                                <Select.Indicator />
+                                                                                            </Select.IndicatorGroup>
+                                                                                        </Select.Control>
+                                                                                        <Portal>
+                                                                                            <Select.Positioner>
+                                                                                                <Select.Content>
+                                                                                                    {/* {roofShapes.items.map((item) => (
+                                                                                                    <Select.Item item={item.value} key={item.value}>
+                                                                                                        {item.label}
+                                                                                                    </Select.Item>
+                                                                                                ))} */}
+                                                                                                </Select.Content>
+                                                                                            </Select.Positioner>
+                                                                                        </Portal>
+                                                                                    </Select.Root>
+                                                                                </Table.Cell>
+                                                                            </Table.Row>
+                                                                        )
+                                                                    })}
+                                                                </Table.Body>
+                                                            </Table.Root>
+                                                        </Field.Root>
+                                                    </GridItem>
+                                                </Grid>
+                                            </GridItem>
+                                        </Collapsible.Content>
+                                    </Collapsible.Root>
+                                }
+
                             </Grid>
                         </Box>
                     </Tabs.Content>

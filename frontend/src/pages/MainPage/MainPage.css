@@ -1,0 +1,11 @@
+.main-page-container{
+    .chakra-select__label, .chakra-field__label{
+        font-size: 16px;
+        font-weight: 600;
+        color: #003475;
+    }
+
+    .chakra-table__row{
+        background-color: #dff0ff;
+    }
+}
