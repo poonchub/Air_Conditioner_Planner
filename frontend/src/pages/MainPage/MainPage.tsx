@@ -26,7 +26,7 @@ function MainPage() {
         buildingTypeId: ["0"],
     });
 
-    const [tabValue, setTabValue] = useState("two");
+    const [tabValue, setTabValue] = useState("one");
 
     const buildingType = [
         { id: 1, title: "Home", image: "/images/option/home.png" },
@@ -50,23 +50,25 @@ function MainPage() {
         { id: 3, title: "Cassette Type", image: "/images/option/cassette_type.png" },
     ];
 
+    const airConditionerTypeImageShow = [
+        { id: 1, title: "Wall Type", image: "./images/option/wall_type_show.png" },
+        { id: 2, title: "Ceiling Suspended Type", image: "/images/option/ceiling_suspended_type_show.png" },
+        { id: 3, title: "Cassette Type", image: "/images/option/cassette_type_show.png" },
+    ];
+
+    const steps = ["one", "two", "three", "four", "five"];
+
     const handleClickNext = () => {
-        if (tabValue === "one") {
-            setTabValue("two");
-        } else if (tabValue === "two") {
-            setTabValue("three");
-        } else if (tabValue === "three") {
-            setTabValue("four");
+        const currentIndex = steps.indexOf(tabValue);
+        if (currentIndex < steps.length - 1) {
+            setTabValue(steps[currentIndex + 1]);
         }
     };
 
-    const handleClickBack = () => {
-        if (tabValue === "four") {
-            setTabValue("three");
-        } else if (tabValue === "three") {
-            setTabValue("two");
-        } else if (tabValue === "two") {
-            setTabValue("one");
+    const handleClickPrev = () => {
+        const currentIndex = steps.indexOf(tabValue);
+        if (currentIndex > 0) {
+            setTabValue(steps[currentIndex - 1]);
         }
     };
 
@@ -203,6 +205,10 @@ function MainPage() {
                         <Tabs.Trigger value="four" transition={"all ease 0.5s"}>
                             <MapPin />
                             ตำแหน่งติดตั้ง
+                        </Tabs.Trigger>
+                        <Tabs.Trigger value="five" transition={"all ease 0.5s"}>
+                            <MapPin />
+                            แสดงผล
                         </Tabs.Trigger>
                     </Tabs.List>
                     <Tabs.Content value={"one"}>
@@ -927,8 +933,8 @@ function MainPage() {
                                 )}
 
                                 {/* Floor */}
-                                {formData.locationAreaId[0] === "3" && (
-                                    <Collapsible.Root open={formData.locationAreaId[0] === "3"}>
+                                {formData.locationAreaId[0] === "3" || formData.buildingTypeId[0] === "1" && (
+                                    <Collapsible.Root open={formData.locationAreaId[0] === "3" || formData.buildingTypeId[0] === "1"}>
                                         <Collapsible.Content height={"100%"}>
                                             <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} height={"100%"}>
                                                 <Grid
@@ -1554,22 +1560,22 @@ function MainPage() {
                                 กำหนดตำแหน่งติดตั้ง
                             </Heading>
                             <Grid gridTemplateColumns={"repeat(3, 1fr)"} gap={10} padding={"1.4rem 2rem "}>
-                                <GridItem colSpan={1} display={'flex'} justifyContent={'center'} alignItems={'center'} padding={5}>
+                                <GridItem colSpan={1} rowSpan={2} display={'flex'} justifyContent={'center'} alignItems={'center'} padding={5}>
                                     <Image
-                                        height="300px"
+                                        height="400px"
                                         src="./images/background/room_3D.png"
                                     />
                                 </GridItem>
                                 <GridItem colSpan={2} border={"1px solid #c5c5c6"} borderRadius={10} padding={5}>
-                                    <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
-                                        <GridItem>
+                                    <Grid gridTemplateColumns={"repeat(5, 1fr)"} gap={20}>
+                                        <GridItem colSpan={3} alignItems={'center'} display={'flex'}>
                                             <Select.Root
                                                 collection={directions}
                                                 value={formData.provinceId}
                                             // onValueChange={(e) => setFormData((prev) => ({ ...prev, provinceId: e.value }))}
                                             >
                                                 <Select.HiddenSelect />
-                                                <Select.Label>ตำแหน่งที่สามารถติดตั้ง outdoor</Select.Label>
+                                                <Select.Label>ตำแหน่งที่สามารถติดตั้ง outdoor (เลือกได้มากกว่า1)</Select.Label>
                                                 <Select.Control>
                                                     <Select.Trigger>
                                                         <Select.ValueText placeholder="เลือกทิศ" />
@@ -1591,14 +1597,24 @@ function MainPage() {
                                                 </Portal>
                                             </Select.Root>
                                         </GridItem>
-                                        <GridItem>
+                                        <GridItem colSpan={2}>
+                                            <Image
+                                                width="100%"
+                                                src="./images/background/indoor.png"
+                                            />
+                                        </GridItem>
+                                    </Grid>
+                                </GridItem>
+                                <GridItem colSpan={2} border={"1px solid #c5c5c6"} borderRadius={10} padding={5}>
+                                    <Grid gridTemplateColumns={"repeat(5, 1fr)"} gap={20}>
+                                        <GridItem colSpan={3} alignItems={'center'} display={'flex'}>
                                             <Select.Root
                                                 collection={directions}
                                                 value={formData.provinceId}
                                             // onValueChange={(e) => setFormData((prev) => ({ ...prev, provinceId: e.value }))}
                                             >
                                                 <Select.HiddenSelect />
-                                                <Select.Label>ตำแหน่งที่สามารถติดตั้ง indoor (ไม่มีสิ่งกีดขวาง)</Select.Label>
+                                                <Select.Label>ตำแหน่งที่สามารถติดตั้ง indoor [ไม่มีสิ่งกีดขวาง] (เลือกได้มากกว่า1)</Select.Label>
                                                 <Select.Control>
                                                     <Select.Trigger>
                                                         <Select.ValueText placeholder="เลือกทิศ" />
@@ -1619,21 +1635,118 @@ function MainPage() {
                                                     </Select.Positioner>
                                                 </Portal>
                                             </Select.Root>
+                                        </GridItem>
+                                        <GridItem colSpan={2}>
+                                            <Image
+                                                width="100%"
+                                                src="./images/background/outdoor.png"
+                                            />
                                         </GridItem>
                                     </Grid>
                                 </GridItem>
                             </Grid>
                         </Box>
                     </Tabs.Content>
+                    <Tabs.Content value={"five"}>
+                        <Box>
+                            <Heading size={"2xl"} color={"#003475"} marginBottom={4}>
+                                แสดงผลข้อมูล
+                            </Heading>
+                            <Grid gridTemplateColumns={"repeat(3, 1fr)"} gap={10} padding={"1.4rem 2rem "}>
+                                <GridItem colSpan={1}>
+                                    <Grid>
+                                        <GridItem>
+                                            <Table.Root size="sm" border={0} fontSize={16}>
+                                                <Table.Body>
+                                                    <Table.Row border={0}>
+                                                        <Table.Cell className="strong-text-blue">
+                                                            ผลการคำนวณได้เท่ากับ
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text">
+                                                            11,590
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text-blue">
+                                                            BTU
+                                                        </Table.Cell>
+                                                    </Table.Row>
+
+                                                    <Table.Row>
+                                                        <Table.Cell className="strong-text-blue">
+                                                            แนะนำติดตั้งขนาด
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text">
+                                                            12,000
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text-blue">
+                                                            BTU
+                                                        </Table.Cell>
+                                                    </Table.Row>
+
+                                                    <Table.Row>
+                                                        <Table.Cell className="strong-text-blue">
+                                                            คำนวณค่าไฟรายปี
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text">
+                                                            2,982
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text-blue">
+                                                            บาท/ปี
+                                                        </Table.Cell>
+                                                    </Table.Row>
+                                                </Table.Body>
+                                            </Table.Root>
+
+                                            <Box display={'flex'} gap={2} marginY={4}>
+                                                <Text className="strong-text-blue">ประเภทแอร์ที่เลือก :</Text>
+                                                <Text className="strong-text">{airConditionerTypeImageShow[(selectedOption.airConditionerTypeID == 0 ? 0 : selectedOption.airConditionerTypeID - 1)].title}</Text>
+                                            </Box>
+                                            <Image
+                                                width="100%"
+                                                src={airConditionerTypeImageShow[(selectedOption.airConditionerTypeID == 0 ? 0 : selectedOption.airConditionerTypeID - 1)].image}
+                                                borderRadius={10}
+                                            />
+                                        </GridItem>
+                                    </Grid>
+                                </GridItem>
+                                <GridItem colSpan={2} display="flex" gap={2} flexDirection={"column"}>
+                                    <Text className="strong-text-blue">แนะนำตำแหน่งติดตั้งเครื่องปรับอากาศ (indoor) :</Text>
+                                    <Box>
+                                        <Text marginBottom={1}>ตำแหน่งที่ 1</Text>
+                                        <Box border={"1px solid #c5c5c6"} borderRadius={10} paddingY={4} paddingX={6}>
+                                            <Text>ผนังด้านทิศเหนือ สูงจากพื้น 2.2 เมตรหรือลงจากเพดาน  (อธิบายถึงความเหมาะสม)</Text>
+                                        </Box>
+                                    </Box>
+                                    <Box>
+                                        <Text marginBottom={1}>ตำแหน่งที่ 2</Text>
+                                        <Box border={"1px solid #c5c5c6"} borderRadius={10} paddingY={4} paddingX={6}>
+                                            <Text>ผนังด้านทิศเหนือ สูงจากพื้น 2.2 เมตรหรือลงจากเพดาน  (อธิบายถึงความเหมาะสม)</Text>
+                                        </Box>
+                                    </Box>
+                                    <Box>
+                                        <Text marginBottom={1}>ตำแหน่งที่ 3</Text>
+                                        <Box border={"1px solid #c5c5c6"} borderRadius={10} paddingY={4} paddingX={6}>
+                                            <Text>ผนังด้านทิศเหนือ สูงจากพื้น 2.2 เมตรหรือลงจากเพดาน  (อธิบายถึงความเหมาะสม)</Text>
+                                        </Box>
+                                    </Box>
+                                </GridItem>
+                            </Grid>
+                        </Box>
+                    </Tabs.Content>
                 </Tabs.Root>
                 <Collapsible.Root open={selectedOption.buildingTypeID != 0}>
-                    <Flex width={"100%"} justifyContent={"space-between"}>
-                        <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={handleClickBack}>
-                            Back
-                        </Button>
-                        <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={handleClickNext}>
-                            Next
-                        </Button>
+                    <Flex width={"100%"} justifyContent={tabValue === "one" ? "flex-end" :"space-between"}>
+                        {
+                            tabValue !== "one" &&
+                            <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={handleClickPrev}>
+                                Previous
+                            </Button>
+                        }
+                        {
+                            tabValue !== "five" &&
+                            <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={handleClickNext}>
+                                Next
+                            </Button>
+                        }
                     </Flex>
                 </Collapsible.Root>
             </Container>

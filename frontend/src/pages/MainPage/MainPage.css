@@ -8,4 +8,19 @@
     .chakra-table__header{
         background-color: #dff0ff;
     }
+
+    .css-1avx2gk{
+        border-bottom-width: 0;
+        padding: 4px 0 6px 0;
+    }
+
+    .strong-text-blue{
+        font-weight: 600;
+        color: #003475;
+    }
+
+    .strong-text{
+        font-weight: 700;
+        color: #000;
+    }
 }
