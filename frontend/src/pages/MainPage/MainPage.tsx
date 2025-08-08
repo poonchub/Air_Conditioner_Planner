@@ -1575,7 +1575,7 @@ function MainPage() {
                                             // onValueChange={(e) => setFormData((prev) => ({ ...prev, provinceId: e.value }))}
                                             >
                                                 <Select.HiddenSelect />
-                                                <Select.Label>ตำแหน่งที่สามารถติดตั้ง outdoor (เลือกได้มากกว่า1)</Select.Label>
+                                                <Select.Label>ตำแหน่งที่สามารถติดตั้ง indoor (เลือกได้มากกว่า1)</Select.Label>
                                                 <Select.Control>
                                                     <Select.Trigger>
                                                         <Select.ValueText placeholder="เลือกทิศ" />
@@ -1614,7 +1614,7 @@ function MainPage() {
                                             // onValueChange={(e) => setFormData((prev) => ({ ...prev, provinceId: e.value }))}
                                             >
                                                 <Select.HiddenSelect />
-                                                <Select.Label>ตำแหน่งที่สามารถติดตั้ง indoor [ไม่มีสิ่งกีดขวาง] (เลือกได้มากกว่า1)</Select.Label>
+                                                <Select.Label>ตำแหน่งที่สามารถติดตั้ง outdoor [ไม่มีสิ่งกีดขวาง] (เลือกได้มากกว่า1)</Select.Label>
                                                 <Select.Control>
                                                     <Select.Trigger>
                                                         <Select.ValueText placeholder="เลือกทิศ" />
