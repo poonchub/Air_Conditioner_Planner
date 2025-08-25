@@ -1,8 +1,9 @@
 import type { CLTDWallsRoofsRow } from "@/types/CLTDWallsRoofsRow";
 import { loadCsv } from "./csvLoader";
+import { BASE_URL } from "@/pages/MainPage/MainPage";
 
 export async function loadCltdData(): Promise<CLTDWallsRoofsRow[]> {
-    return loadCsv<CLTDWallsRoofsRow>("/data/CLTDWallsRoofs.csv");
+    return loadCsv<CLTDWallsRoofsRow>(`${BASE_URL}/data/CLTDWallsRoofs.csv`);
 }
 
 export function findCltd(
