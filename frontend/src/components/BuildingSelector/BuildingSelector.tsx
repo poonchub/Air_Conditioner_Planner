@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Box, Grid, GridItem, Image, Text, Heading } from "@chakra-ui/react";
+import { BASE_URL } from "@/pages/MainPage/MainPage";
 
 interface Item {
     id: number;
@@ -73,7 +74,7 @@ const BuildingSelector: React.FC<BuildingSelectorProps> = ({ onChange }) => {
                             <Box position="relative">
                                 <Image
                                     rounded="md"
-                                    src={item.image}
+                                    src={`${BASE_URL}${item.image}`}
                                     border={
                                         selectedOption.buildingType === item.title
                                             ? "4px solid #fe7743"
@@ -114,7 +115,7 @@ const BuildingSelector: React.FC<BuildingSelectorProps> = ({ onChange }) => {
                             >
                                 <Image
                                     rounded="md"
-                                    src={item.image}
+                                    src={`${BASE_URL}${item.image}`}
                                     border={
                                         selectedOption.subRoom === item.title
                                             ? "4px solid #fe7743"

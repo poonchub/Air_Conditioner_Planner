@@ -9,6 +9,8 @@ import InstallationPositionSelector from "@/components/InstallationPositionSelec
 import { findMaximumLightingPowerDensity, loadWattLightData } from "@/data/WattLightService";
 import type { WattLightRow } from "@/types/WattLightRow";
 
+export const BASE_URL = import.meta.env.BASE_URL
+
 function MainPage() {
     const [selectedOption, setSelectedOption] = useState<{ buildingType?: string | null; subRoom?: string | null }>({
         buildingType: null,
@@ -203,7 +205,7 @@ function MainPage() {
 
     return (
         <Box className="main-page-container">
-            <Box width={"100%"} padding={"5rem 2rem"} spaceY={4} backgroundImage={"url('/images/background/main_title.png')"} textAlign={"center"} color={"#FFF"}>
+            <Box width={"100%"} padding={"5rem 2rem"} spaceY={4} backgroundImage={`url('${BASE_URL}/images/background/main_title.png')`} textAlign={"center"} color={"#FFF"}>
                 <Heading size={"7xl"} fontWeight={600} letterSpacing="wide">
                     AIR CONDITIONER PLANNER
                 </Heading>
