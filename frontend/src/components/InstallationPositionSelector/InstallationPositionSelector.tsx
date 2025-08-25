@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Box, Grid, GridItem, Image, Heading, Select, Portal } from "@chakra-ui/react";
+import { Box, Grid, GridItem, Image, Heading } from "@chakra-ui/react";
 
 interface DirectionItem {
     value: string;
@@ -18,15 +18,17 @@ interface FormData {
 interface InstallationPositionSelectorProps {
     directions: Directions;
 }
-
+// @ts-ignore
 const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> = ({
     directions,
 }) => {
+    // @ts-ignore
     const [formData, setFormData] = useState<FormData>({
         indoorDirections: [],
         outdoorDirections: [],
     });
 
+    // @ts-ignore
     const handleSelectChange = (type: "indoor" | "outdoor", value: string) => {
         setFormData((prev) => {
             const key = type === "indoor" ? "indoorDirections" : "outdoorDirections";
@@ -61,7 +63,7 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                 <GridItem colSpan={2} border="1px solid #c5c5c6" borderRadius={10} padding={5}>
                     <Grid gridTemplateColumns="repeat(5, 1fr)" gap={20}>
                         <GridItem colSpan={3} display="flex" alignItems="center">
-                            <Select.Root>
+                            {/* <Select.Root>
                                 <Select.HiddenSelect />
                                 <Select.Label>
                                     ตำแหน่งที่สามารถติดตั้ง indoor (เลือกได้มากกว่า1)
@@ -91,7 +93,7 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                         </Select.Content>
                                     </Select.Positioner>
                                 </Portal>
-                            </Select.Root>
+                            </Select.Root> */}
                         </GridItem>
                         <GridItem colSpan={2}>
                             <Image width="100%" src="./images/background/indoor.png" />
@@ -103,7 +105,7 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                 <GridItem colSpan={2} border="1px solid #c5c5c6" borderRadius={10} padding={5}>
                     <Grid gridTemplateColumns="repeat(5, 1fr)" gap={20}>
                         <GridItem colSpan={3} display="flex" alignItems="center">
-                            <Select.Root>
+                            {/* <Select.Root>
                                 <Select.HiddenSelect />
                                 <Select.Label>
                                     ตำแหน่งที่สามารถติดตั้ง outdoor [ไม่มีสิ่งกีดขวาง]
@@ -134,7 +136,7 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                         </Select.Content>
                                     </Select.Positioner>
                                 </Portal>
-                            </Select.Root>
+                            </Select.Root> */}
                         </GridItem>
                         <GridItem colSpan={2}>
                             <Image width="100%" src="./images/background/outdoor.png" />

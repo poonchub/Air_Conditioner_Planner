@@ -1,7 +1,7 @@
-import { Box, Button, CloseButton, Collapsible, Container, createListCollection, Dialog, Field, Flex, Grid, GridItem, Heading, Image, NumberInput, Portal, Table, Tabs, Text } from "@chakra-ui/react";
+import { Box, Button, Collapsible, Container, createListCollection, Field, Flex, Grid, GridItem, Heading, NumberInput, Table, Tabs, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import "./MainPage.css";
-import { AirVent, FileText, Home, Info, MapPin } from "lucide-react";
+import { AirVent, FileText, Home, MapPin } from "lucide-react";
 import { FormControl, InputLabel, MenuItem, Select, TextField } from "@mui/material";
 import BuildingSelector from "@/components/BuildingSelector/BuildingSelector";
 import AirConditionerSelector from "@/components/AirConditionerSelector/AirConditionerSelector";
@@ -19,6 +19,7 @@ function MainPage() {
         ballastFactor: 1
     });
 
+    // @ts-ignore
     const [calculateVariable, setCalculateVariable] = useState({
         qLight: 0
     })
@@ -66,6 +67,7 @@ function MainPage() {
         { id: 3, title: "Cassette Type", image: "/images/option/cassette_type.png" },
     ];
 
+    // @ts-ignore
     const airConditionerTypeImageShow = [
         { id: 1, title: "Wall Type", image: "./images/option/wall_type_show.png" },
         { id: 2, title: "Ceiling Suspended Type", image: "/images/option/ceiling_suspended_type_show.png" },
@@ -101,6 +103,7 @@ function MainPage() {
         { label: "อุดรธานี", value: "10" },
     ]
 
+    // @ts-ignore
     const locationArea = createListCollection({
         items: [
             { label: "ชั้นบนสุด (ใต้หลังคา)", value: "1" },
@@ -109,6 +112,7 @@ function MainPage() {
         ],
     });
 
+    // @ts-ignore
     const ceilingArea = createListCollection({
         items: [
             { label: "มีมากกว่า 30 ซม.", value: "1" },
@@ -131,6 +135,7 @@ function MainPage() {
         ],
     });
 
+    // @ts-ignore
     const hourOptions = createListCollection({
         items: Array.from({ length: 24 }, (_, i) => {
             const hour = (i + 1).toString().padStart(2, "0");
@@ -141,6 +146,7 @@ function MainPage() {
         }),
     });
 
+    // @ts-ignore
     const roofShapes = createListCollection({
         items: [
             { label: "หลังคาทรงหน้าจั่ว", value: "1" },
@@ -151,6 +157,7 @@ function MainPage() {
         ],
     });
 
+    // @ts-ignore
     const materials = createListCollection({
         items: [
             { label: "กระจก", value: "1" },
@@ -159,6 +166,7 @@ function MainPage() {
         ],
     });
 
+    // @ts-ignore
     const wallSides = createListCollection({
         items: [
             { label: "ผนังด้านสั้น", value: "1" },
@@ -166,6 +174,7 @@ function MainPage() {
         ],
     });
 
+    // @ts-ignore
     const colors = createListCollection({
         items: [
             { label: "สีเข้ม", value: "1" },
@@ -173,6 +182,7 @@ function MainPage() {
         ],
     });
 
+    // @ts-ignore
     const buildingTypes = createListCollection({
         items: [
             { label: "อาคารชั้นเดียว", value: "1" },
@@ -180,6 +190,7 @@ function MainPage() {
         ],
     });
 
+    // @ts-ignore
     const filterAirConditionerTypes = airConditionerTypes.filter((item) => {
         // if (formData.ceilingAreaId[0] === "3") {
         //     return String(item.id) === "1";
@@ -1071,7 +1082,10 @@ function MainPage() {
                                                         </Table.Row>
                                                     </Table.Header>
                                                     <Table.Body>
-                                                        {[...Array(3)].map((element, index) => (
+                                                        
+                                                        {
+                                                        // @ts-ignore
+                                                        [...Array(3)].map((element, index) => (
                                                             <Table.Row key={index}>
                                                                 <Table.Cell>
                                                                     {/* <Select.Root collection={roofShapes}>
