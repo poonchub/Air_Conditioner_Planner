@@ -1,7 +1,7 @@
 import './App.css'
 import { Box, ChakraProvider, createSystem, defaultConfig, defineConfig, Theme } from '@chakra-ui/react'
 import MainPage from './pages/MainPage/MainPage'
-import { ColorModeProvider, DarkMode, LightMode } from './components/ui/color-mode'
+import { ColorModeProvider } from './components/ui/color-mode'
 
 function App() {
 
