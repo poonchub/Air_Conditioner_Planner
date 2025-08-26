@@ -1,67 +1,377 @@
-import { Box, Button, Collapsible, Container, createListCollection, Field, Flex, Grid, GridItem, Heading, NumberInput, Table, Tabs, Text } from "@chakra-ui/react";
+import { Box, Button, Collapsible, Container, createListCollection, Field, Flex, Grid, GridItem, Heading, Table, Tabs, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import "./MainPage.css";
 import { AirVent, FileText, Home, MapPin } from "lucide-react";
-import { FormControl, InputLabel, MenuItem, Select, TextField } from "@mui/material";
+import { Chip, FormControl, InputLabel, MenuItem, OutlinedInput, Select, TextField, type SelectChangeEvent } from "@mui/material";
 import BuildingSelector from "@/components/BuildingSelector/BuildingSelector";
 import AirConditionerSelector from "@/components/AirConditionerSelector/AirConditionerSelector";
-import InstallationPositionSelector from "@/components/InstallationPositionSelector/InstallationPositionSelector";
 import { findMaximumLightingPowerDensity, loadWattLightData } from "@/data/WattLightService";
 import type { WattLightRow } from "@/types/WattLightRow";
+import { findTotalHeat, loadOccupancyHeatGainData } from "@/data/OccupancyHeatGainService";
+import type { OccupancyHeatGainRow } from "@/types/OccupancyHeatGainRow";
+import type { EquipmentRow } from "@/types/EquipmentRow";
+import { findCLF, findPowerW, getEquipmentOptions, loadEquipmentData } from "@/data/EquipmentService";
+import type { DoorTypeRow } from "@/types/DoorTypeRow";
+import { getDoorTypeData, loadDoorTypeData } from "@/data/DoorTypeService";
+import type { ClimateDataRow } from "@/types/ClimateDataRow";
+import { getClimateData, loadClimateData } from "@/data/ClimateDataService";
+import { equipmentLabelMap } from "@/mapData/equipmentLabelMap";
+import { doorTypeLabelMap } from "@/mapData/doorTypeLabelMap";
+import { provinceLabelMap } from "@/mapData/provinceLabelMap";
+import type { WindowTypeRow } from "@/types/WindowTypeRow";
+import { getWindowTypeData, loadWindowTypeData } from "@/data/WindowTypeService";
+import { windowTypeLabelMap } from "@/mapData/windowTypeLabelMap";
 
 export const BASE_URL = import.meta.env.BASE_URL
 
+interface DataFindProps {
+    lightPowerDensity: string | null;
+    totalHeat: string | null;
+    equipment: string[] | null
+}
+
+type EquipmentValue = {
+    equipmentName: string;
+    label: string;
+    quantity: number;
+    powerW: number;
+    clf: number;
+    qEquipment: number
+};
+
+type DoorValue = {
+    directionName: string;
+    doorType: string;
+    material: string;
+    haveShade: boolean;
+    haveCurtain: boolean;
+    quantity: number;
+    cfm: number;
+};
+
+type WindowValue = {
+    directionName: string;
+    windowType: string;
+    material: string;
+    haveShade: boolean;
+    haveCurtain: boolean;
+    quantity: number;
+    cfm: number;
+}
+
+type FormDataProps = {
+    province: string;
+    people: number;
+    width: number;
+    depth: number;
+    height: number;
+    ballastFactor: number;
+    equipmentValue: EquipmentValue[];
+    doorValue: DoorValue[];
+    windowValue: WindowValue[];
+};
+
+
+
 function MainPage() {
-    const [selectedOption, setSelectedOption] = useState<{ buildingType?: string | null; subRoom?: string | null }>({
+    const [selectedOption, setSelectedOption] = useState<{
+        buildingType?: string | null;
+        subRoom?: string | null;
+    }>({
         buildingType: null,
         subRoom: null,
     });
 
-    const [formData, setFormData] = useState({
-        ballastFactor: 1
+    const [formData, setFormData] = useState<FormDataProps>({
+        province: "Bangkok",
+        people: 1,
+        width: 3,
+        depth: 3,
+        height: 3,
+        ballastFactor: 1,
+        equipmentValue: [],
+        doorValue: [],
+        windowValue: []
     });
 
     // @ts-ignore
     const [calculateVariable, setCalculateVariable] = useState({
-        qLight: 0
+        qLight: 0,
+        qPeople: 0,
+        qEquipmentSum: 0,
+        qInfiltration: 0,
+        qDoorCfmSum: 0,
+        qWindowCfmSum: 0,
+    })
+
+    const [dataFind, setDataFind] = useState<DataFindProps>({
+        lightPowerDensity: null,
+        totalHeat: null,
+        equipment: null
     })
 
     const [tabValue, setTabValue] = useState("one");
 
-    const [width, setWidth] = useState(3);
-    const [depth, setDepth] = useState(3);
-    const [height, setHeight] = useState(3);
-
     const [wattLightData, setWattLightData] = useState<WattLightRow[]>([]);
-    const [lightPowerDensity, setLightPowerDensity] = useState<string | null>(null);
+    const [occupancyHeatGainData, setOccupancyHeatGainData] = useState<OccupancyHeatGainRow[]>([])
+    const [equipmentData, setEquipmentData] = useState<EquipmentRow[]>([])
+    const [doorTypeData, setDoorTypeData] = useState<DoorTypeRow[]>([])
+    const [windowTypeData, setWindowTypeData] = useState<WindowTypeRow[]>([])
+    const [climateData, setClimateData] = useState<ClimateDataRow[]>([])
+
+    const handleDoorDirectionChange = (event: SelectChangeEvent<string[]>) => {
+        const {
+            target: { value },
+        } = event;
+
+        setFormData((prev) => {
+            const prevDoors = prev.doorValue || [];
+
+            const newDoors: DoorValue[] = [...prevDoors];
+
+            const directionArr = typeof value === 'string' ? value.split(',') : value
+            directionArr?.forEach((dir) => {
+                const exists = newDoors.find(d => d.directionName === dir);
+                if (!exists) {
+                    newDoors.push({
+                        directionName: dir,
+                        doorType: "SingleSwingDoor",
+                        material: "Glass",
+                        haveShade: false,
+                        haveCurtain: false,
+                        quantity: 1,
+                        cfm: 0,
+                    });
+                }
+            });
+
+            const filteredDoors = newDoors.filter(d => directionArr?.includes(d.directionName));
+
+            return {
+                ...prev,
+                doorValue: filteredDoors
+            };
+        });
+    };
+
+    const handleWindowDirectionChange = (event: SelectChangeEvent<string[]>) => {
+        const {
+            target: { value },
+        } = event;
+
+        setFormData((prev) => {
+            const prevWindows = prev.windowValue || [];
+
+            const newWindows: WindowValue[] = [...prevWindows];
+
+            const directionArr = typeof value === 'string' ? value.split(',') : value
+            directionArr?.forEach((dir) => {
+                const exists = newWindows.find(d => d.directionName === dir);
+                if (!exists) {
+                    newWindows.push({
+                        directionName: dir,
+                        windowType: "SwingWindow",
+                        material: "Glass",
+                        haveShade: false,
+                        haveCurtain: false,
+                        quantity: 1,
+                        cfm: 0
+                    });
+                }
+            });
+
+            const filteredWindows = newWindows.filter(d => directionArr?.includes(d.directionName));
+
+            return {
+                ...prev,
+                windowValue: filteredWindows
+            };
+        });
+    };
 
     useEffect(() => {
         loadWattLightData().then(setWattLightData);
+        loadOccupancyHeatGainData().then(setOccupancyHeatGainData)
+        loadEquipmentData().then(setEquipmentData)
+        loadDoorTypeData().then(setDoorTypeData)
+        loadWindowTypeData().then(setWindowTypeData)
+        loadClimateData().then(setClimateData)
     }, []);
 
     useEffect(() => {
         if (selectedOption.buildingType != null && selectedOption.subRoom != null) {
-            const value = findMaximumLightingPowerDensity(
+            const lightPowerDensity = findMaximumLightingPowerDensity(
                 wattLightData,
                 selectedOption.buildingType,
                 selectedOption.subRoom
             );
-            console.log("lightPowerDensity: ", value)
-            setLightPowerDensity(value);
+            // console.log("lightPowerDensity: ", lightPowerDensity)
+            setDataFind((prev) => ({ ...prev, lightPowerDensity: lightPowerDensity }))
+
+            const totalHeat = findTotalHeat(
+                occupancyHeatGainData,
+                selectedOption.buildingType,
+                selectedOption.subRoom
+            )
+            // console.log("totalHeat: ", totalHeat)
+            setDataFind((prev) => ({ ...prev, totalHeat: totalHeat }))
+
+            const equipment = getEquipmentOptions(
+                equipmentData,
+                selectedOption.buildingType,
+                selectedOption.subRoom
+            )
+            // console.log("equipment: ", equipment)
+            setDataFind((prev) => ({ ...prev, equipment: equipment }))
+
+            const equipmentValue = equipment.map((eq) => ({
+                equipmentName: eq,
+                label: equipmentLabelMap[eq] || eq,
+                quantity: 0,
+                powerW: Number(findPowerW(
+                    equipmentData,
+                    selectedOption.buildingType ?? '',
+                    selectedOption.subRoom ?? '',
+                    eq
+                )),
+                clf: Number(findCLF(
+                    equipmentData,
+                    selectedOption.buildingType ?? '',
+                    selectedOption.subRoom ?? '',
+                    eq
+                )),
+                qEquipment: 0
+            }))
+            setFormData((prev) => ({ ...prev, equipmentValue }))
         }
     }, [selectedOption])
 
-    useEffect(()=>{
-        console.log("ballastFactor: ", formData.ballastFactor)
-        if (formData.ballastFactor && lightPowerDensity) {
-            const qLight = width * depth * formData.ballastFactor * Number(lightPowerDensity)
+    useEffect(() => {
+        if (formData.province && calculateVariable.qDoorCfmSum && calculateVariable.qWindowCfmSum) {
+            const climatedt = getClimateData(
+                climateData,
+                formData.province
+            )
+
+            const qInfiltration = (
+                (calculateVariable.qDoorCfmSum + calculateVariable.qWindowCfmSum) *
+                (
+                    (1.085 * (Number(climatedt?.DB_OutMax) - Number(climatedt?.DB_In))) +
+                    (0.7 * (Number(climatedt?.W_Out) - Number(climatedt?.W_In)))
+                )
+            )
+            console.log("qInfiltration: ", qInfiltration)
+            setCalculateVariable((prev) => ({
+                ...prev,
+                qInfiltration: qInfiltration
+            }))
+        }
+    }, [formData.province, calculateVariable.qDoorCfmSum, calculateVariable.qWindowCfmSum])
+
+    useEffect(() => {
+        if (formData.ballastFactor && dataFind.lightPowerDensity) {
+            const qLight = formData.width * formData.depth * formData.ballastFactor * Number(dataFind.lightPowerDensity)
             console.log("qLight: ", qLight)
-            setCalculateVariable((prev)=> ({
+            setCalculateVariable((prev) => ({
                 ...prev,
                 qLight: qLight
             }))
         }
-    }, [formData, lightPowerDensity])
+    }, [formData.ballastFactor, dataFind.lightPowerDensity])
+
+    useEffect(() => {
+        if (formData.people && dataFind.totalHeat) {
+            const qPeople = formData.people * Number(dataFind.totalHeat)
+            console.log("qPeople: ", qPeople)
+            setCalculateVariable((prev) => ({
+                ...prev,
+                qPeople: qPeople
+            }))
+        }
+    }, [formData.people, dataFind.totalHeat])
+
+    useEffect(() => {
+        if (formData.equipmentValue) {
+            let sum = 0
+            formData.equipmentValue.map((item) => {
+                sum += item.qEquipment
+            })
+            console.log("qEquipmentSum: ", sum)
+            setCalculateVariable((prev) => ({ ...prev, qEquipmentSum: sum }))
+        }
+    }, [formData.equipmentValue])
+
+    useEffect(() => {
+        setFormData((prev) => {
+            const updatedDoorValue = prev.doorValue.map((door) => {
+                const doortypedt = getDoorTypeData(
+                    doorTypeData,
+                    door.doorType
+                )
+
+                const newCfm = Number(doortypedt?.cfm ?? 0) * door.quantity;
+
+                if (door.cfm === newCfm) return door;
+
+                return {
+                    ...door,
+                    cfm: newCfm,
+                };
+            });
+
+            const isChanged = updatedDoorValue.some((d, i) => d.cfm !== prev.doorValue[i].cfm);
+            if (!isChanged) return prev;
+
+            const sum = updatedDoorValue.reduce((acc, d) => acc + d.cfm, 0);
+            setCalculateVariable((prevCalc) => ({
+                ...prevCalc,
+                qDoorCfmSum: sum,
+            }));
+
+            return {
+                ...prev,
+                doorValue: updatedDoorValue,
+            };
+        });
+    }, [formData.doorValue, doorTypeData])
+
+    useEffect(() => {
+        setFormData((prev) => {
+            const updatedWindowValue = prev.windowValue.map((window) => {
+                const windowtypedt = getWindowTypeData(
+                    windowTypeData,
+                    window.windowType
+                )
+
+                const newCfm = Number(windowtypedt?.cfm ?? 0) * window.quantity;
+
+                if (window.cfm === newCfm) return window;
+
+                return {
+                    ...window,
+                    cfm: newCfm,
+                };
+            });
+
+            const isChanged = updatedWindowValue.some((w, i) => w.cfm !== prev.windowValue[i].cfm);
+            if (!isChanged) return prev;
+
+            const sum = updatedWindowValue.reduce((acc, w) => acc + w.cfm, 0);
+            setCalculateVariable((prevCalc) => ({
+                ...prevCalc,
+                qWindowCfmSum: sum,
+            }));
+
+            return {
+                ...prev,
+                windowValue: updatedWindowValue,
+            };
+        });
+    }, [formData.windowValue, windowTypeData]);
+
+    console.log("doorValue: ", formData.doorValue)
+    console.log("windowValue: ", formData.windowValue)
+    console.log("calculateVariable: ", calculateVariable)
 
     const airConditionerTypes = [
         { id: 1, title: "Wall Type", image: "/images/option/wall_type.png" },
@@ -92,19 +402,6 @@ function MainPage() {
         }
     };
 
-    const provinces = [
-        { label: "กรุงเทพมหานคร", value: "1" },
-        { label: "เชียงใหม่", value: "2" },
-        { label: "ชลบุรี", value: "3" },
-        { label: "ขอนแก่น", value: "4" },
-        { label: "นครราชสีมา", value: "5" },
-        { label: "ภูเก็ต", value: "6" },
-        { label: "สงขลา", value: "7" },
-        { label: "สุราษฎร์ธานี", value: "8" },
-        { label: "นครศรีธรรมราช", value: "9" },
-        { label: "อุดรธานี", value: "10" },
-    ]
-
     // @ts-ignore
     const locationArea = createListCollection({
         items: [
@@ -123,19 +420,17 @@ function MainPage() {
         ],
     });
 
-    const directions = createListCollection({
-        items: [
-            { label: "ทิศเหนือ", value: "1" },
-            { label: "ทิศตะวันออกเฉียงเหนือ", value: "2" },
-            { label: "ทิศตะวันออก", value: "3" },
-            { label: "ทิศตะวันออกเฉียงใต้", value: "4" },
-            { label: "ทิศใต้", value: "5" },
-            { label: "ทิศตะวันตกเฉียงใต้", value: "6" },
-            { label: "ทิศตะวันตก", value: "W" },
-            { label: "ทิศตะวันตกเฉียงเหนือ", value: "7" },
-            { label: "ไม่มี", value: "8" },
-        ],
-    });
+    const directions = [
+        { label: "ทิศเหนือ", value: "1" },
+        { label: "ทิศตะวันออกเฉียงเหนือ", value: "2" },
+        { label: "ทิศตะวันออก", value: "3" },
+        { label: "ทิศตะวันออกเฉียงใต้", value: "4" },
+        { label: "ทิศใต้", value: "5" },
+        { label: "ทิศตะวันตกเฉียงใต้", value: "6" },
+        { label: "ทิศตะวันตก", value: "W" },
+        { label: "ทิศตะวันตกเฉียงเหนือ", value: "7" },
+        { label: "ไม่มี", value: "8" },
+    ]
 
     // @ts-ignore
     const hourOptions = createListCollection({
@@ -250,24 +545,26 @@ function MainPage() {
                                 <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5}>
                                     <Grid gridTemplateColumns={"repeat(2, 1fr)"} gap={5}>
                                         <GridItem colSpan={2}>
-                                            <FormControl fullWidth>
-                                                <InputLabel id="demo-simple-select-label">Age</InputLabel>
-                                                <Select
-                                                    labelId="demo-simple-select-label"
-                                                    id="demo-simple-select"
-                                                    value={''}
-                                                    label="Age"
-                                                // onChange={handleChange}
-                                                >
-                                                    {
-                                                        provinces.map((item, index) => {
-                                                            return (
-                                                                <MenuItem key={index} value={item.value}>{item.label}</MenuItem>
-                                                            )
-                                                        })
-                                                    }
-                                                </Select>
-                                            </FormControl>
+                                            <Field.Root>
+                                                <Field.Label>จังหวัด (Province)</Field.Label>
+                                                <FormControl fullWidth>
+                                                    <Select
+                                                        value={formData.province}
+                                                        onChange={(e) => setFormData((prev) => ({
+                                                            ...prev,
+                                                            province: e.target.value
+                                                        }))}
+                                                    >
+                                                        {
+                                                            climateData.map((item, index) => {
+                                                                return (
+                                                                    <MenuItem key={index} value={item.Province}>{provinceLabelMap[item.Province]}</MenuItem>
+                                                                )
+                                                            })
+                                                        }
+                                                    </Select>
+                                                </FormControl>
+                                            </Field.Root>
                                         </GridItem>
                                         <GridItem colSpan={2}>
                                             <Field.Root>
@@ -291,22 +588,22 @@ function MainPage() {
                                                             <Table.Cell>
                                                                 <TextField
                                                                     type="number"
-                                                                    value={width}
-                                                                    onChange={(e) => setWidth(Number(e.target.value))}
+                                                                    value={formData.width}
+                                                                    onChange={(e) => setFormData((prev) => ({ ...prev, width: Number(e.target.value) }))}
                                                                 />
                                                             </Table.Cell>
                                                             <Table.Cell>
                                                                 <TextField
                                                                     type="number"
-                                                                    value={depth}
-                                                                    onChange={(e) => setDepth(Number(e.target.value))}
+                                                                    value={formData.depth}
+                                                                    onChange={(e) => setFormData((prev) => ({ ...prev, depth: Number(e.target.value) }))}
                                                                 />
                                                             </Table.Cell>
                                                             <Table.Cell>
                                                                 <TextField
                                                                     type="number"
-                                                                    value={height}
-                                                                    onChange={(e) => setHeight(Number(e.target.value))}
+                                                                    value={formData.height}
+                                                                    onChange={(e) => setFormData((prev) => ({ ...prev, height: Number(e.target.value) }))}
                                                                 />
                                                             </Table.Cell>
                                                         </Table.Row>
@@ -329,13 +626,13 @@ function MainPage() {
                                                                 label="Age"
                                                             // onChange={handleChange}
                                                             >
-                                                                {
+                                                                {/* {
                                                                     provinces.map((item, index) => {
                                                                         return (
                                                                             <MenuItem key={index} value={item.label}>{item.label}</MenuItem>
                                                                         )
                                                                     })
-                                                                }
+                                                                } */}
                                                             </Select>
                                                         </FormControl>
                                                     </GridItem>
@@ -351,13 +648,13 @@ function MainPage() {
                                                                 label="Age"
                                                             // onChange={handleChange}
                                                             >
-                                                                {
+                                                                {/* {
                                                                     provinces.map((item, index) => {
                                                                         return (
                                                                             <MenuItem key={index} value={item.value}>{item.label}</MenuItem>
                                                                         )
                                                                     })
-                                                                }
+                                                                } */}
                                                             </Select>
                                                         </FormControl>
                                                     </GridItem>
@@ -473,41 +770,34 @@ function MainPage() {
                                 <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5}>
                                     <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
                                         <GridItem>
-                                            {/* <Select.Root
-                                                multiple
-                                                collection={directions}
-                                                value={formData.wallSunlightDirectionsId}
-                                                onValueChange={(e) => {
-                                                    const selected = e.value.length > 0 ? e.value.filter((val) => val !== "0") : ["0"];
-                                                    setFormData((prev) => ({ ...prev, wallSunlightDirectionsId: selected }));
-                                                }}
-                                            >
-                                                <Select.HiddenSelect />
-                                                <Select.Label>ผนัง</Select.Label>
-                                                <Select.Label>ระบุทิศผนังที่โดนแดดและไม่ติดกับห้องอื่น (เลือกได้มากกว่า1)</Select.Label>
-                                                <Select.Control>
-                                                    <Select.Trigger>
-                                                        <Select.ValueText placeholder="เลือกทิศ" />
-                                                    </Select.Trigger>
-                                                    <Select.IndicatorGroup>
-                                                        <Select.ClearTrigger />
-                                                        <Select.Indicator />
-                                                    </Select.IndicatorGroup>
-                                                </Select.Control>
-                                                <Portal>
-                                                    <Select.Positioner>
-                                                        <Select.Content>
-                                                            {directions.items.map((item) => (
-                                                                <Select.Item item={item.value} key={item.value}>
-                                                                    {item.label}
-                                                                    <Select.ItemIndicator />
-                                                                </Select.Item>
-                                                            ))}
-                                                        </Select.Content>
-                                                    </Select.Positioner>
-                                                </Portal>
-                                            </Select.Root> */}
+                                            <Field.Root>
+                                                <Field.Label>ผนังห้อง (Wall)</Field.Label>
+                                                <Field.Label>ระบุทิศผนังที่โดนแดดและไม่ติดกับห้องอื่น (เลือกได้มากกว่า1)</Field.Label>
+                                                <FormControl sx={{ width: "100%" }}>
+                                                    <InputLabel id="demo-multiple-chip-label">Chip</InputLabel>
+                                                    <Select
+                                                        labelId="demo-multiple-chip-label"
+                                                        id="demo-multiple-chip"
+                                                        multiple
+                                                        // value={personName}
+                                                        // onChange={handleChange}
+                                                        input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
+                                                    // MenuProps={MenuProps}
+                                                    >
+                                                        {/* {names.map((name) => (
+                                                        <MenuItem
+                                                            key={name}
+                                                            value={name}
+                                                            style={getStyles(name, personName, theme)}
+                                                        >
+                                                            {name}
+                                                        </MenuItem>
+                                                    ))} */}
+                                                    </Select>
+                                                </FormControl>
+                                            </Field.Root>
                                         </GridItem>
+
                                         <GridItem>
                                             <Field.Root>
                                                 <Field.Label>ระบุข้อมูลผนังห้อง</Field.Label>
@@ -740,44 +1030,39 @@ function MainPage() {
                                 )} */}
 
                                 {/* Door Direction */}
-                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5}>
+                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
                                     <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
                                         <GridItem>
-                                            {/* <Select.Root
-                                                multiple
-                                                collection={directions}
-                                                value={formData.doorDirectionsId}
-                                                onValueChange={(e) => {
-                                                    const selected = e.value.length > 0 ? e.value.filter((val) => val !== "0") : ["0"];
-                                                    setFormData((prev) => ({ ...prev, doorDirectionsId: selected }));
-                                                }}
-                                            >
-                                                <Select.HiddenSelect />
-                                                <Select.Label>ประตู (Door)</Select.Label>
-                                                <Select.Label>ระบุทิศทาง (เลือกได้มากกว่า1)</Select.Label>
-                                                <Select.Control>
-                                                    <Select.Trigger>
-                                                        <Select.ValueText placeholder="เลือกทิศ" />
-                                                    </Select.Trigger>
-                                                    <Select.IndicatorGroup>
-                                                        <Select.ClearTrigger />
-                                                        <Select.Indicator />
-                                                    </Select.IndicatorGroup>
-                                                </Select.Control>
-                                                <Portal>
-                                                    <Select.Positioner>
-                                                        <Select.Content>
-                                                            {directions.items.map((item) => (
-                                                                <Select.Item item={item.value} key={item.value}>
-                                                                    {item.label}
-                                                                    <Select.ItemIndicator />
-                                                                </Select.Item>
-                                                            ))}
-                                                        </Select.Content>
-                                                    </Select.Positioner>
-                                                </Portal>
-                                            </Select.Root> */}
+                                            <Field.Root>
+                                                <Field.Label>ประตู (Door)</Field.Label>
+                                                <Field.Label>ระบุทิศทาง (เลือกได้มากกว่า1)</Field.Label>
+                                                <FormControl sx={{ width: "100%" }}>
+                                                    <Select
+                                                        multiple
+                                                        value={formData.doorValue.map(d => d.directionName)}
+                                                        onChange={handleDoorDirectionChange}
+                                                        input={<OutlinedInput />}
+                                                        renderValue={(selected) => (
+                                                            <Box display={'flex'} flexWrap={'wrap'} gap={0.5}>
+                                                                {selected?.map((value) => (
+                                                                    <Chip key={value} label={value} />
+                                                                ))}
+                                                            </Box>
+                                                        )}
+                                                    >
+                                                        {directions.map((item, index) => (
+                                                            <MenuItem
+                                                                key={index}
+                                                                value={item.label}
+                                                            >
+                                                                {item.label}
+                                                            </MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                            </Field.Root>
                                         </GridItem>
+
                                         <GridItem>
                                             <Field.Root>
                                                 <Field.Label>ระบุข้อมูลประตู</Field.Label>
@@ -794,7 +1079,10 @@ function MainPage() {
                                                                 วัสดุ
                                                             </Table.ColumnHeader>
                                                             <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                สีภายนอก
+                                                                กันสาด
+                                                            </Table.ColumnHeader>
+                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                ม่านบังแดด
                                                             </Table.ColumnHeader>
                                                             <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
                                                                 จำนวน
@@ -802,87 +1090,122 @@ function MainPage() {
                                                         </Table.Row>
                                                     </Table.Header>
                                                     <Table.Body>
-                                                        {/* {formData.doorDirectionsId.map((id) => {
-                                                            const direction = directions.items.find((item) => item.value === id);
-
+                                                        {formData.doorValue.map((item, index) => {
                                                             return (
-                                                                direction && (
-                                                                    <Table.Row key={direction?.value}>
-                                                                        <Table.Cell textAlign={"center"}>{direction?.label}</Table.Cell>
-                                                                        <Table.Cell>
-                                                                            <Select.Root
-                                                                                collection={wallSides}
-                                                                            >
-                                                                                <Select.HiddenSelect />
-                                                                                <Select.Control>
-                                                                                    <Select.Trigger>
-                                                                                        <Select.ValueText placeholder="ระบุประภท" />
-                                                                                    </Select.Trigger>
-                                                                                    <Select.IndicatorGroup>
-                                                                                        <Select.Indicator />
-                                                                                    </Select.IndicatorGroup>
-                                                                                </Select.Control>
-                                                                                <Portal>
-                                                                                    <Select.Positioner>
-                                                                                    </Select.Positioner>
-                                                                                </Portal>
-                                                                            </Select.Root>
-                                                                        </Table.Cell>
-                                                                        <Table.Cell>
-                                                                            <Select.Root
-                                                                                collection={materials}
-                                                                            >
-                                                                                <Select.HiddenSelect />
-                                                                                <Select.Control>
-                                                                                    <Select.Trigger>
-                                                                                        <Select.ValueText placeholder="ระบุวัสดุ" />
-                                                                                    </Select.Trigger>
-                                                                                    <Select.IndicatorGroup>
-                                                                                        <Select.Indicator />
-                                                                                    </Select.IndicatorGroup>
-                                                                                </Select.Control>
-                                                                                <Portal>
-                                                                                    <Select.Positioner>
-                                                                                    </Select.Positioner>
-                                                                                </Portal>
-                                                                            </Select.Root>
-                                                                        </Table.Cell>
-                                                                        <Table.Cell>
-                                                                            <Select.Root
-                                                                                collection={colors}
-                                                                            >
-                                                                                <Select.HiddenSelect />
-                                                                                <Select.Control>
-                                                                                    <Select.Trigger>
-                                                                                        <Select.ValueText placeholder="ระบุสีภายนอก" />
-                                                                                    </Select.Trigger>
-                                                                                    <Select.IndicatorGroup>
-                                                                                        <Select.Indicator />
-                                                                                    </Select.IndicatorGroup>
-                                                                                </Select.Control>
-                                                                                <Portal>
-                                                                                    <Select.Positioner>
-                                                                                        <Select.Content>
-                                                                                            {colors.items.map((item) => (
-                                                                                                <Select.Item item={item.value} key={item.value}>
-                                                                                                    {item.label}
-                                                                                                </Select.Item>
-                                                                                            ))}
-                                                                                        </Select.Content>
-                                                                                    </Select.Positioner>
-                                                                                </Portal>
-                                                                            </Select.Root>
-                                                                        </Table.Cell>
-                                                                        <Table.Cell>
-                                                                            <NumberInput.Root defaultValue="1">
-                                                                                <NumberInput.Control />
-                                                                                <NumberInput.Input />
-                                                                            </NumberInput.Root>
-                                                                        </Table.Cell>
-                                                                    </Table.Row>
-                                                                )
+                                                                <Table.Row key={index}>
+                                                                    <Table.Cell textAlign={"center"}>{item.directionName}</Table.Cell>
+
+                                                                    <Table.Cell>
+                                                                        <Select
+                                                                            sx={{ width: '100%' }}
+                                                                            value={item.doorType ?? ''}
+                                                                            onChange={(e) => {
+                                                                                const newValue = e.target.value;
+                                                                                setFormData((prev) => {
+                                                                                    const updated = [...prev.doorValue];
+                                                                                    updated[index] = {
+                                                                                        ...updated[index],
+                                                                                        doorType: newValue,
+                                                                                    };
+                                                                                    return { ...prev, doorValue: updated };
+                                                                                });
+                                                                            }}
+                                                                        >
+                                                                            {
+                                                                                doorTypeData.map((doortype, index) => {
+                                                                                    return (
+                                                                                        <MenuItem key={index} value={doortype.DoorType}>{doorTypeLabelMap[doortype.DoorType]}</MenuItem>
+                                                                                    )
+                                                                                })
+                                                                            }
+                                                                        </Select>
+                                                                    </Table.Cell>
+
+                                                                    <Table.Cell>
+                                                                        <Select
+                                                                            sx={{ width: '100%' }}
+                                                                            value={item.material}
+                                                                            onChange={(e) => {
+                                                                                const newValue = e.target.value;
+                                                                                setFormData((prev) => {
+                                                                                    const updated = [...prev.doorValue];
+                                                                                    updated[index] = {
+                                                                                        ...updated[index],
+                                                                                        material: newValue,
+                                                                                    };
+                                                                                    return { ...prev, doorValue: updated };
+                                                                                });
+                                                                            }}
+                                                                        >
+                                                                            <MenuItem value={"Glass"}>กระจก</MenuItem>
+                                                                            <MenuItem value={"Other"}>อื่น ๆ</MenuItem>
+                                                                        </Select>
+                                                                    </Table.Cell>
+
+                                                                    <Table.Cell>
+                                                                        <Select
+                                                                            sx={{ width: '100%' }}
+                                                                            disabled={item.material !== "Glass"}
+                                                                            value={item.haveShade}
+                                                                            onChange={(e) => {
+                                                                                const newValue = e.target.value === "true";
+                                                                                setFormData((prev) => {
+                                                                                    const updated = [...prev.doorValue];
+                                                                                    updated[index] = {
+                                                                                        ...updated[index],
+                                                                                        haveShade: newValue,
+                                                                                    };
+                                                                                    return { ...prev, doorValue: updated };
+                                                                                });
+                                                                            }}
+                                                                        >
+                                                                            <MenuItem value={"true"}>มี</MenuItem>
+                                                                            <MenuItem value={"false"}>ไม่มี</MenuItem>
+                                                                        </Select>
+                                                                    </Table.Cell>
+
+                                                                    <Table.Cell>
+                                                                        <Select
+                                                                            sx={{ width: '100%' }}
+                                                                            disabled={item.material !== "Glass"}
+                                                                            value={item.haveCurtain}
+                                                                            onChange={(e) => {
+                                                                                const newValue = e.target.value === "true";
+                                                                                setFormData((prev) => {
+                                                                                    const updated = [...prev.doorValue];
+                                                                                    updated[index] = {
+                                                                                        ...updated[index],
+                                                                                        haveCurtain: newValue,
+                                                                                    };
+                                                                                    return { ...prev, doorValue: updated };
+                                                                                });
+                                                                            }}
+                                                                        >
+                                                                            <MenuItem value={"true"}>มี</MenuItem>
+                                                                            <MenuItem value={"false"}>ไม่มี</MenuItem>
+                                                                        </Select>
+                                                                    </Table.Cell>
+
+                                                                    <Table.Cell>
+                                                                        <TextField
+                                                                            sx={{ width: '100%' }}
+                                                                            value={item.quantity}
+                                                                            onChange={(e) => {
+                                                                                const newValue = Number(e.target.value);
+                                                                                setFormData((prev) => {
+                                                                                    const updated = [...prev.doorValue];
+                                                                                    updated[index] = {
+                                                                                        ...updated[index],
+                                                                                        quantity: newValue,
+                                                                                    };
+                                                                                    return { ...prev, doorValue: updated };
+                                                                                });
+                                                                            }}
+                                                                        />
+                                                                    </Table.Cell>
+                                                                </Table.Row>
                                                             );
-                                                        })} */}
+                                                        })}
                                                     </Table.Body>
                                                 </Table.Root>
                                             </Field.Root>
@@ -891,44 +1214,39 @@ function MainPage() {
                                 </GridItem>
 
                                 {/* Window Direction */}
-                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5}>
+                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
                                     <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
                                         <GridItem>
-                                            {/* <Select.Root
-                                                multiple
-                                                collection={directions}
-                                                value={formData.windowDirectionsId}
-                                                onValueChange={(e) => {
-                                                    const selected = e.value.length > 0 ? e.value.filter((val) => val !== "0") : ["0"];
-                                                    setFormData((prev) => ({ ...prev, windowDirectionsId: selected }));
-                                                }}
-                                            >
-                                                <Select.HiddenSelect />
-                                                <Select.Label>หน้าต่าง (Window)</Select.Label>
-                                                <Select.Label>ระบุทิศทาง (เลือกได้มากกว่า1)</Select.Label>
-                                                <Select.Control>
-                                                    <Select.Trigger>
-                                                        <Select.ValueText placeholder="เลือกทิศ" />
-                                                    </Select.Trigger>
-                                                    <Select.IndicatorGroup>
-                                                        <Select.ClearTrigger />
-                                                        <Select.Indicator />
-                                                    </Select.IndicatorGroup>
-                                                </Select.Control>
-                                                <Portal>
-                                                    <Select.Positioner>
-                                                        <Select.Content>
-                                                            {directions.items.map((item) => (
-                                                                <Select.Item item={item.value} key={item.value}>
-                                                                    {item.label}
-                                                                    <Select.ItemIndicator />
-                                                                </Select.Item>
-                                                            ))}
-                                                        </Select.Content>
-                                                    </Select.Positioner>
-                                                </Portal>
-                                            </Select.Root> */}
+                                            <Field.Root>
+                                                <Field.Label>หน้าต่าง (Window)</Field.Label>
+                                                <Field.Label>ระบุทิศทาง (เลือกได้มากกว่า1)</Field.Label>
+                                                <FormControl sx={{ width: "100%" }}>
+                                                    <Select
+                                                        multiple
+                                                        value={formData.windowValue.map(d => d.directionName)}
+                                                        onChange={handleWindowDirectionChange}
+                                                        input={<OutlinedInput />}
+                                                        renderValue={(selected) => (
+                                                            <Box display={'flex'} flexWrap={'wrap'} gap={0.5}>
+                                                                {selected?.map((value) => (
+                                                                    <Chip key={value} label={value} />
+                                                                ))}
+                                                            </Box>
+                                                        )}
+                                                    >
+                                                        {directions.map((item, index) => (
+                                                            <MenuItem
+                                                                key={index}
+                                                                value={item.label}
+                                                            >
+                                                                {item.label}
+                                                            </MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                            </Field.Root>
                                         </GridItem>
+
                                         <GridItem>
                                             <Field.Root>
                                                 <Field.Label>ระบุข้อมูลหน้าต่าง</Field.Label>
@@ -945,66 +1263,133 @@ function MainPage() {
                                                                 วัสดุ
                                                             </Table.ColumnHeader>
                                                             <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                กันสาด
+                                                            </Table.ColumnHeader>
+                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                ม่านบังแดด
+                                                            </Table.ColumnHeader>
+                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
                                                                 จำนวน
                                                             </Table.ColumnHeader>
                                                         </Table.Row>
                                                     </Table.Header>
                                                     <Table.Body>
-                                                        {/* {formData.windowDirectionsId.map((id) => {
-                                                            const direction = directions.items.find((item) => item.value === id);
-
+                                                        {formData.windowValue.map((item, index) => {
                                                             return (
-                                                                direction && (
-                                                                    <Table.Row key={direction?.value}>
-                                                                        <Table.Cell textAlign={"center"}>{direction?.label}</Table.Cell>
-                                                                        <Table.Cell>
-                                                                            <Select.Root
-                                                                                collection={wallSides}
-                                                                            >
-                                                                                <Select.HiddenSelect />
-                                                                                <Select.Control>
-                                                                                    <Select.Trigger>
-                                                                                        <Select.ValueText placeholder="ระบุประภท" />
-                                                                                    </Select.Trigger>
-                                                                                    <Select.IndicatorGroup>
-                                                                                        <Select.Indicator />
-                                                                                    </Select.IndicatorGroup>
-                                                                                </Select.Control>
-                                                                                <Portal>
-                                                                                    <Select.Positioner>
-                                                                                    </Select.Positioner>
-                                                                                </Portal>
-                                                                            </Select.Root>
-                                                                        </Table.Cell>
-                                                                        <Table.Cell>
-                                                                            <Select.Root
-                                                                                collection={materials}
-                                                                            >
-                                                                                <Select.HiddenSelect />
-                                                                                <Select.Control>
-                                                                                    <Select.Trigger>
-                                                                                        <Select.ValueText placeholder="ระบุวัสดุ" />
-                                                                                    </Select.Trigger>
-                                                                                    <Select.IndicatorGroup>
-                                                                                        <Select.Indicator />
-                                                                                    </Select.IndicatorGroup>
-                                                                                </Select.Control>
-                                                                                <Portal>
-                                                                                    <Select.Positioner>
-                                                                                    </Select.Positioner>
-                                                                                </Portal>
-                                                                            </Select.Root>
-                                                                        </Table.Cell>
-                                                                        <Table.Cell>
-                                                                            <NumberInput.Root defaultValue="1">
-                                                                                <NumberInput.Control />
-                                                                                <NumberInput.Input />
-                                                                            </NumberInput.Root>
-                                                                        </Table.Cell>
-                                                                    </Table.Row>
-                                                                )
+                                                                <Table.Row key={index}>
+                                                                    <Table.Cell textAlign={"center"}>{item.directionName}</Table.Cell>
+
+                                                                    <Table.Cell>
+                                                                        <Select
+                                                                            sx={{ width: '100%' }}
+                                                                            value={item.windowType ?? ''}
+                                                                            onChange={(e) => {
+                                                                                const newValue = e.target.value;
+                                                                                setFormData((prev) => {
+                                                                                    const updated = [...prev.windowValue];
+                                                                                    updated[index] = {
+                                                                                        ...updated[index],
+                                                                                        windowType: newValue,
+                                                                                    };
+                                                                                    return { ...prev, windowValue: updated };
+                                                                                });
+                                                                            }}
+                                                                        >
+                                                                            {
+                                                                                windowTypeData.map((windowtype, index) => {
+                                                                                    return (
+                                                                                        <MenuItem key={index} value={windowtype.WindowType}>{windowTypeLabelMap[windowtype.WindowType]}</MenuItem>
+                                                                                    )
+                                                                                })
+                                                                            }
+                                                                        </Select>
+                                                                    </Table.Cell>
+
+                                                                    <Table.Cell>
+                                                                        <Select
+                                                                            sx={{ width: '100%' }}
+                                                                            value={item.material}
+                                                                            onChange={(e) => {
+                                                                                const newValue = e.target.value;
+                                                                                setFormData((prev) => {
+                                                                                    const updated = [...prev.windowValue];
+                                                                                    updated[index] = {
+                                                                                        ...updated[index],
+                                                                                        material: newValue,
+                                                                                    };
+                                                                                    return { ...prev, windowValue: updated };
+                                                                                });
+                                                                            }}
+                                                                        >
+                                                                            <MenuItem value={"Glass"}>กระจก</MenuItem>
+                                                                            <MenuItem value={"Other"}>อื่น ๆ</MenuItem>
+                                                                        </Select>
+                                                                    </Table.Cell>
+
+                                                                    <Table.Cell>
+                                                                        <Select
+                                                                            sx={{ width: '100%' }}
+                                                                            disabled={item.material !== "Glass"}
+                                                                            value={item.haveShade}
+                                                                            onChange={(e) => {
+                                                                                const newValue = e.target.value === "true";
+                                                                                setFormData((prev) => {
+                                                                                    const updated = [...prev.windowValue];
+                                                                                    updated[index] = {
+                                                                                        ...updated[index],
+                                                                                        haveShade: newValue,
+                                                                                    };
+                                                                                    return { ...prev, windowValue: updated };
+                                                                                });
+                                                                            }}
+                                                                        >
+                                                                            <MenuItem value={"true"}>มี</MenuItem>
+                                                                            <MenuItem value={"false"}>ไม่มี</MenuItem>
+                                                                        </Select>
+                                                                    </Table.Cell>
+
+                                                                    <Table.Cell>
+                                                                        <Select
+                                                                            sx={{ width: '100%' }}
+                                                                            disabled={item.material !== "Glass"}
+                                                                            value={item.haveCurtain}
+                                                                            onChange={(e) => {
+                                                                                const newValue = e.target.value === "true";
+                                                                                setFormData((prev) => {
+                                                                                    const updated = [...prev.windowValue];
+                                                                                    updated[index] = {
+                                                                                        ...updated[index],
+                                                                                        haveCurtain: newValue,
+                                                                                    };
+                                                                                    return { ...prev, windowValue: updated };
+                                                                                });
+                                                                            }}
+                                                                        >
+                                                                            <MenuItem value={"true"}>มี</MenuItem>
+                                                                            <MenuItem value={"false"}>ไม่มี</MenuItem>
+                                                                        </Select>
+                                                                    </Table.Cell>
+
+                                                                    <Table.Cell>
+                                                                        <TextField
+                                                                            sx={{ width: '100%' }}
+                                                                            value={item.quantity}
+                                                                            onChange={(e) => {
+                                                                                const newValue = Number(e.target.value);
+                                                                                setFormData((prev) => {
+                                                                                    const updated = [...prev.windowValue];
+                                                                                    updated[index] = {
+                                                                                        ...updated[index],
+                                                                                        quantity: newValue,
+                                                                                    };
+                                                                                    return { ...prev, windowValue: updated };
+                                                                                });
+                                                                            }}
+                                                                        />
+                                                                    </Table.Cell>
+                                                                </Table.Row>
                                                             );
-                                                        })} */}
+                                                        })}
                                                     </Table.Body>
                                                 </Table.Root>
                                             </Field.Root>
@@ -1047,10 +1432,11 @@ function MainPage() {
                                                 <Field.Label>ผู้อยู่อาศัย (People)</Field.Label>
                                                 <Box display={'flex'} alignItems={'center'} gap={2}>
                                                     <Text fontSize={16} marginBottom={2}>จำนวนผู้อยู่อาศัยในอาคาร</Text>
-                                                    <NumberInput.Root defaultValue="1">
-                                                        <NumberInput.Control />
-                                                        <NumberInput.Input />
-                                                    </NumberInput.Root>
+                                                    <TextField
+                                                        type="number"
+                                                        value={formData.people}
+                                                        onChange={(e) => setFormData((prev) => ({ ...prev, people: Number(e.target.value) }))}
+                                                    />
                                                     <Text fontSize={16} marginBottom={2}>คน</Text>
                                                 </Box>
 
@@ -1062,7 +1448,6 @@ function MainPage() {
                                 {/* Equipment */}
                                 <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} height={"100%"}>
                                     <Grid
-                                        // gridTemplateColumns={'repeat(1, 1fr)'}
                                         gap={5}
                                     >
                                         <GridItem>
@@ -1078,67 +1463,37 @@ function MainPage() {
                                                             <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
                                                                 จำนวน
                                                             </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                ลักษณะการใช้งาน
-                                                            </Table.ColumnHeader>
                                                         </Table.Row>
                                                     </Table.Header>
                                                     <Table.Body>
-                                                        
+
                                                         {
-                                                        // @ts-ignore
-                                                        [...Array(3)].map((element, index) => (
-                                                            <Table.Row key={index}>
-                                                                <Table.Cell>
-                                                                    {/* <Select.Root collection={roofShapes}>
-                                                                        <Select.HiddenSelect />
-                                                                        <Select.Control>
-                                                                            <Select.Trigger>
-                                                                                <Select.ValueText placeholder="เลือกประเภท" />
-                                                                            </Select.Trigger>
-                                                                            <Select.IndicatorGroup>
-                                                                                <Select.Indicator />
-                                                                            </Select.IndicatorGroup>
-                                                                        </Select.Control>
-                                                                        <Portal>
-                                                                            <Select.Positioner>
-                                                                                <Select.Content>
-                                                                                </Select.Content>
-                                                                            </Select.Positioner>
-                                                                        </Portal>
-                                                                    </Select.Root> */}
-                                                                </Table.Cell>
-                                                                <Table.Cell>
-                                                                    <NumberInput.Root defaultValue="1">
-                                                                        <NumberInput.Control />
-                                                                        <NumberInput.Input />
-                                                                    </NumberInput.Root>
-                                                                </Table.Cell>
-                                                                <Table.Cell>
-                                                                    {/* <Select.Root collection={roofShapes}>
-                                                                        <Select.HiddenSelect />
-                                                                        <Select.Control>
-                                                                            <Select.Trigger>
-                                                                                <Select.ValueText placeholder="เลือกลักษณะการใช้งาน" />
-                                                                            </Select.Trigger>
-                                                                            <Select.IndicatorGroup>
-                                                                                <Select.Indicator />
-                                                                            </Select.IndicatorGroup>
-                                                                        </Select.Control>
-                                                                        <Portal>
-                                                                            <Select.Positioner>
-                                                                                <Select.Content>
-                                                                                    <Select.Item item={"1"} key="1">ตลอดเวลา</Select.Item>
-                                                                                    <Select.Item item={"2"} key="2">บ่อยครั้ง</Select.Item>
-                                                                                    <Select.Item item={"3"} key="3">บางเวลา</Select.Item>
-                                                                                    <Select.Item item={"4"} key="4">ไม่เคย</Select.Item>
-                                                                                </Select.Content>
-                                                                            </Select.Positioner>
-                                                                        </Portal>
-                                                                    </Select.Root> */}
-                                                                </Table.Cell>
-                                                            </Table.Row>
-                                                        ))}
+                                                            // @ts-ignore
+                                                            formData.equipmentValue.map((item, index) => (
+                                                                <Table.Row key={index}>
+                                                                    <Table.Cell>
+                                                                        {item.label}
+                                                                    </Table.Cell>
+                                                                    <Table.Cell>
+                                                                        <TextField
+                                                                            type="number"
+                                                                            value={item.quantity}
+                                                                            onChange={(e) => {
+                                                                                const newValue = Number(e.target.value);
+                                                                                setFormData((prev) => {
+                                                                                    const updated = [...prev.equipmentValue];
+                                                                                    updated[index] = {
+                                                                                        ...updated[index],
+                                                                                        quantity: newValue,
+                                                                                        qEquipment: updated[index].powerW * updated[index].clf * newValue
+                                                                                    };
+                                                                                    return { ...prev, equipmentValue: updated };
+                                                                                });
+                                                                            }}
+                                                                        />
+                                                                    </Table.Cell>
+                                                                </Table.Row>
+                                                            ))}
 
                                                     </Table.Body>
                                                 </Table.Root>
@@ -1153,7 +1508,7 @@ function MainPage() {
                         <AirConditionerSelector filterAirConditionerTypes={filterAirConditionerTypes} />
                     </Tabs.Content>
                     <Tabs.Content value={"four"}>
-                        <InstallationPositionSelector directions={directions} />
+                        {/* <InstallationPositionSelector directions={directions} /> */}
                     </Tabs.Content>
                     <Tabs.Content value={"five"}>
                         <Box>

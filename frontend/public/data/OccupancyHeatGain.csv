@@ -1,0 +1,8 @@
+BuildingType,SubType,TotalHeat,SensibleHeat ,LatentHeat 
+Home,Bedroom,95,65,30
+Home,LivingRoom,115,70,45
+Home,DiningRoom,160,80,80
+Commercial,Office,130,75,55
+Commercial,Shop,145,75,70
+Commercial,Restaurant,160,80,80
+PublicEducation,General,115,70,45

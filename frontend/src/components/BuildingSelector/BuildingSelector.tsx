@@ -4,6 +4,7 @@ import { BASE_URL } from "@/pages/MainPage/MainPage";
 
 interface Item {
     id: number;
+    value: string;
     title: string;
     image: string;
 }
@@ -31,23 +32,22 @@ const BuildingSelector: React.FC<BuildingSelectorProps> = ({ onChange }) => {
     }, [selectedOption, onChange]);
 
     const buildingType: Item[] = [
-        { id: 1, title: "Home", image: "/images/option/home.png" },
-        { id: 2, title: "Commercial", image: "/images/option/commercial.png" },
-        { id: 3, title: "Public / education", image: "/images/option/public_education.png" },
+        { id: 1, title: "Home", value: "Home", image: "/images/option/home.png" },
+        { id: 2, title: "Commercial", value: "Commercial", image: "/images/option/commercial.png" },
+        { id: 3, title: "Public / Education", value: "PublicEducation", image: "/images/option/public_education.png" },
     ];
 
     const subRoomMap: { [buildingTitle: string]: Item[] } = {
         Home: [
-            { id: 101, title: "Bedroom", image: "/images/option/bedroom.png" },
-            { id: 102, title: "LivingRoom", image: "/images/option/living_room.png" },
-            { id: 103, title: "DiningRoom", image: "/images/option/dining_room.png" },
+            { id: 101, title: "Bedroom", value: "Bedroom", image: "/images/option/bedroom.png" },
+            { id: 102, title: "Living Room", value: "LivingRoom", image: "/images/option/living_room.png" },
+            { id: 103, title: "Dining Room", value: "DiningRoom", image: "/images/option/dining_room.png" },
         ],
         Commercial: [
-            { id: 201, title: "Office", image: "/images/option/office.png" },
-            { id: 202, title: "Shop", image: "/images/option/store.png" },
-            { id: 203, title: "Restaurant", image: "/images/option/restaurant.png" },
+            { id: 201, title: "Office", value: "Office", image: "/images/option/office.png" },
+            { id: 202, title: "Shop", value: "Shop", image: "/images/option/store.png" },
+            { id: 203, title: "Restaurant", value: "Restaurant", image: "/images/option/restaurant.png" },
         ],
-        "Public / education": [{ id: 301, title: "General", image: "/images/option/general.png" }],
     };
 
     const subRoomOptions = selectedOption.buildingType
@@ -67,16 +67,16 @@ const BuildingSelector: React.FC<BuildingSelectorProps> = ({ onChange }) => {
                             key={item.id}
                             _hover={{ transform: "translate(0%, -2%)" }}
                             transition="all ease 0.5s"
-                            onClick={() =>
-                                setSelectedOption({ buildingType: item.title, subRoom: null })
-                            }
+                            onClick={() => {
+                                setSelectedOption({ buildingType: item.value, subRoom: item.value === "PublicEducation" ? "General" : null})
+                            }}
                         >
                             <Box position="relative">
                                 <Image
                                     rounded="md"
                                     src={`${BASE_URL}${item.image}`}
                                     border={
-                                        selectedOption.buildingType === item.title
+                                        selectedOption.buildingType === item.value
                                             ? "4px solid #fe7743"
                                             : "2px solid transparent"
                                     }
@@ -88,6 +88,11 @@ const BuildingSelector: React.FC<BuildingSelectorProps> = ({ onChange }) => {
                                     transform="translate(-50%, -50%)"
                                     width="100%"
                                     textAlign="center"
+                                    fontSize={32}
+                                    color={"#71B0FF"}
+                                    fontWeight={700}
+                                    fontStyle={'italic'}
+                                    textShadow={"2px 2px 8px #000000ff"}
                                 >
                                     {item.title}
                                 </Text>
@@ -110,19 +115,25 @@ const BuildingSelector: React.FC<BuildingSelectorProps> = ({ onChange }) => {
                                 _hover={{ transform: "translate(0%, -2%)" }}
                                 transition="all ease 0.5s"
                                 onClick={() =>
-                                    setSelectedOption((prev) => ({ ...prev, subRoom: item.title }))
+                                    setSelectedOption((prev) => ({ ...prev, subRoom: item.value }))
                                 }
+                                textAlign={"center"}
                             >
                                 <Image
                                     rounded="md"
                                     src={`${BASE_URL}${item.image}`}
                                     border={
-                                        selectedOption.subRoom === item.title
+                                        selectedOption.subRoom === item.value
                                             ? "4px solid #fe7743"
                                             : "2px solid transparent"
                                     }
                                 />
-                                <Text marginTop={4}>{item.title}</Text>
+                                <Text 
+                                    marginTop={4} 
+                                    fontSize={22}
+                                    color={"#003475"}
+                                    fontWeight={600}
+                                >{item.title}</Text>
                             </GridItem>
                         ))}
                     </Grid>
