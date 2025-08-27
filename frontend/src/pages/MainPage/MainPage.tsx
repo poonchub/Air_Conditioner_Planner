@@ -2,7 +2,7 @@ import { Box, Button, Collapsible, Container, createListCollection, Field, Flex,
 import { useEffect, useState } from "react";
 import "./MainPage.css";
 import { AirVent, FileText, Home, MapPin } from "lucide-react";
-import { Chip, FormControl, InputLabel, MenuItem, OutlinedInput, Select, TextField, type SelectChangeEvent } from "@mui/material";
+import { Chip, Collapse, FormControl, InputLabel, MenuItem, OutlinedInput, Select, TextField, Zoom, type SelectChangeEvent } from "@mui/material";
 import BuildingSelector from "@/components/BuildingSelector/BuildingSelector";
 import AirConditionerSelector from "@/components/AirConditionerSelector/AirConditionerSelector";
 import { findMaximumLightingPowerDensity, loadWattLightData } from "@/data/WattLightService";
@@ -21,6 +21,10 @@ import { provinceLabelMap } from "@/mapData/provinceLabelMap";
 import type { WindowTypeRow } from "@/types/WindowTypeRow";
 import { getWindowTypeData, loadWindowTypeData } from "@/data/WindowTypeService";
 import { windowTypeLabelMap } from "@/mapData/windowTypeLabelMap";
+import type { UCLTDRoofRow } from "@/types/UCLTDRoofRow";
+import { findUCLTDRoofTimeRange, findUvalue, loadUCLTDRoofData } from "@/data/UCLTDRoofService";
+import type { LMWallAndRoofRow } from "@/types/LMWallAndRoofRow";
+import { interpolateLMByLat, loadLMWallAndRoofData } from "@/data/LMWallAndRoofService";
 
 export const BASE_URL = import.meta.env.BASE_URL
 
@@ -59,19 +63,44 @@ type WindowValue = {
     cfm: number;
 }
 
+type WallValue = {
+    directionName: string;
+    position: string;
+    material: string;
+    kWallColor: number;
+    wallArea: number;
+    glassArea: number;
+}
+
 type FormDataProps = {
     province: string;
     people: number;
     width: number;
     depth: number;
     height: number;
+    startTime: string;
+    endTime: string;
+    ceiling: string;
+    roomPosition: string;
+    roofType: string;
+    kRoofColor: number;
     ballastFactor: number;
     equipmentValue: EquipmentValue[];
     doorValue: DoorValue[];
     windowValue: WindowValue[];
+    wallValue: WallValue[]
 };
 
-
+type CalculateVariableProps = {
+    qLight: number;
+    qPeople: number;
+    qEquipmentSum: number;
+    qInfiltration: number;
+    qDoorCfmSum: number;
+    qWindowCfmSum: number;
+    areaValue: [],
+    cltdW: number,
+}
 
 function MainPage() {
     const [selectedOption, setSelectedOption] = useState<{
@@ -83,25 +112,34 @@ function MainPage() {
     });
 
     const [formData, setFormData] = useState<FormDataProps>({
-        province: "Bangkok",
+        province: "",
         people: 1,
         width: 3,
         depth: 3,
         height: 3,
+        startTime: "",
+        endTime: "",
+        ceiling: "",
+        roomPosition: "",
+        roofType: "",
+        kRoofColor: 0,
         ballastFactor: 1,
         equipmentValue: [],
         doorValue: [],
-        windowValue: []
+        windowValue: [],
+        wallValue: [],
     });
 
     // @ts-ignore
-    const [calculateVariable, setCalculateVariable] = useState({
+    const [calculateVariable, setCalculateVariable] = useState<CalculateVariableProps>({
         qLight: 0,
         qPeople: 0,
         qEquipmentSum: 0,
         qInfiltration: 0,
         qDoorCfmSum: 0,
         qWindowCfmSum: 0,
+        areaValue: [],
+        cltdW: 0,
     })
 
     const [dataFind, setDataFind] = useState<DataFindProps>({
@@ -118,6 +156,8 @@ function MainPage() {
     const [doorTypeData, setDoorTypeData] = useState<DoorTypeRow[]>([])
     const [windowTypeData, setWindowTypeData] = useState<WindowTypeRow[]>([])
     const [climateData, setClimateData] = useState<ClimateDataRow[]>([])
+    const [roofData, setRoofData] = useState<UCLTDRoofRow[]>([])
+    const [lmWallAndRoofData, setLMWallAndRoofData] = useState<LMWallAndRoofRow[]>([])
 
     const handleDoorDirectionChange = (event: SelectChangeEvent<string[]>) => {
         const {
@@ -125,11 +165,27 @@ function MainPage() {
         } = event;
 
         setFormData((prev) => {
-            const prevDoors = prev.doorValue || [];
+            const directionArr = typeof value === 'string' ? value.split(',') : value
+            if (directionArr.includes("ไม่มี")) {
+                return {
+                    ...prev,
+                    doorValue: [
+                        {
+                            directionName: "ไม่มี",
+                            doorType: "",
+                            material: "",
+                            haveShade: false,
+                            haveCurtain: false,
+                            quantity: 0,
+                            cfm: 0,
+                        },
+                    ],
+                };
+            }
 
+            const prevDoors = prev.doorValue || [];
             const newDoors: DoorValue[] = [...prevDoors];
 
-            const directionArr = typeof value === 'string' ? value.split(',') : value
             directionArr?.forEach((dir) => {
                 const exists = newDoors.find(d => d.directionName === dir);
                 if (!exists) {
@@ -152,6 +208,8 @@ function MainPage() {
                 doorValue: filteredDoors
             };
         });
+
+
     };
 
     const handleWindowDirectionChange = (event: SelectChangeEvent<string[]>) => {
@@ -160,11 +218,28 @@ function MainPage() {
         } = event;
 
         setFormData((prev) => {
-            const prevWindows = prev.windowValue || [];
+            const directionArr = typeof value === 'string' ? value.split(',') : value
 
+            if (directionArr.includes("ไม่มี")) {
+                return {
+                    ...prev,
+                    windowValue: [
+                        {
+                            directionName: "ไม่มี",
+                            windowType: "",
+                            material: "",
+                            haveShade: false,
+                            haveCurtain: false,
+                            quantity: 0,
+                            cfm: 0
+                        },
+                    ],
+                };
+            }
+
+            const prevWindows = prev.windowValue || [];
             const newWindows: WindowValue[] = [...prevWindows];
 
-            const directionArr = typeof value === 'string' ? value.split(',') : value
             directionArr?.forEach((dir) => {
                 const exists = newWindows.find(d => d.directionName === dir);
                 if (!exists) {
@@ -189,6 +264,57 @@ function MainPage() {
         });
     };
 
+    const handleWallDirectionChange = (event: SelectChangeEvent<string[]>) => {
+        const {
+            target: { value },
+        } = event;
+
+        setFormData((prev) => {
+            const directionArr = typeof value === 'string' ? value.split(',') : value
+
+            if (directionArr.includes("ไม่มี")) {
+                return {
+                    ...prev,
+                    wallValue: [
+                        {
+                            directionName: "ไม่มี",
+                            position: "",
+                            material: "",
+                            kWallColor: 0,
+                            wallArea: 0,
+                            glassArea: 0
+                        },
+                    ],
+                };
+            }
+
+            const prevWalls = prev.wallValue || [];
+            const newWalls: WallValue[] = [...prevWalls];
+
+
+            directionArr?.forEach((dir) => {
+                const exists = newWalls.find(d => d.directionName === dir);
+                if (!exists) {
+                    newWalls.push({
+                        directionName: dir,
+                        position: "",
+                        material: "",
+                        kWallColor: 0.65,
+                        wallArea: 0,
+                        glassArea: 0
+                    });
+                }
+            });
+
+            const filteredWalls = newWalls.filter(d => directionArr?.includes(d.directionName));
+
+            return {
+                ...prev,
+                wallValue: filteredWalls
+            };
+        });
+    };
+
     useEffect(() => {
         loadWattLightData().then(setWattLightData);
         loadOccupancyHeatGainData().then(setOccupancyHeatGainData)
@@ -196,6 +322,8 @@ function MainPage() {
         loadDoorTypeData().then(setDoorTypeData)
         loadWindowTypeData().then(setWindowTypeData)
         loadClimateData().then(setClimateData)
+        loadUCLTDRoofData().then(setRoofData)
+        loadLMWallAndRoofData().then(setLMWallAndRoofData)
     }, []);
 
     useEffect(() => {
@@ -296,7 +424,7 @@ function MainPage() {
             formData.equipmentValue.map((item) => {
                 sum += item.qEquipment
             })
-            console.log("qEquipmentSum: ", sum)
+            // console.log("qEquipmentSum: ", sum)
             setCalculateVariable((prev) => ({ ...prev, qEquipmentSum: sum }))
         }
     }, [formData.equipmentValue])
@@ -369,9 +497,150 @@ function MainPage() {
         });
     }, [formData.windowValue, windowTypeData]);
 
-    console.log("doorValue: ", formData.doorValue)
-    console.log("windowValue: ", formData.windowValue)
-    console.log("calculateVariable: ", calculateVariable)
+    useEffect(() => {
+        // คำนวณใหม่ทุกครั้งที่มีการเปลี่ยนค่า
+        setFormData((prev) => {
+            const newWallValue = prev.wallValue.map((wall) => {
+                // หาประตูและหน้าต่างที่ตรงกับ direction ของผนังนี้
+                const matchedDoors = prev.doorValue.filter(
+                    (d) => d.directionName === wall.directionName
+                );
+                const matchedWindows = prev.windowValue.filter(
+                    (w) => w.directionName === wall.directionName
+                );
+
+                // พื้นที่ผนังทั้งหมด อ้างอิงจาก position (สมมติคุณมี wallAreaMap)
+                let totalWallArea = 0;
+                if (wall.position === "Width") {
+                    totalWallArea = formData.width * formData.height
+                } else if (wall.position === "Depth") {
+                    totalWallArea = formData.depth * formData.height
+                }
+
+                let glassArea = 0;
+                if (wall.material === "Glass") {
+                    glassArea = totalWallArea
+                } else {
+                    // คำนวณพื้นที่ประตูที่เป็นกระจก
+                    matchedDoors.forEach((door) => {
+                        if (door.material === "Glass") {
+                            const doorArea = getDoorTypeData(
+                                doorTypeData,
+                                door.doorType
+                            )
+                            glassArea += Number(doorArea?.DoorArea) * door.quantity;
+                        }
+                    });
+
+                    // คำนวณพื้นที่หน้าต่างที่เป็นกระจก
+                    matchedWindows.forEach((win) => {
+                        if (win.material === "Glass") {
+                            const windowArea = getWindowTypeData(
+                                windowTypeData,
+                                win.windowType
+                            );
+                            glassArea += Number(windowArea?.WindowArea) * win.quantity;
+                        }
+                    });
+                }
+
+                return {
+                    ...wall,
+                    glassArea,
+                    wallArea: totalWallArea - glassArea,
+                };
+            });
+
+            return { ...prev, wallValue: newWallValue };
+        });
+    }, [formData.doorValue, formData.windowValue, formData.width, formData.depth, formData.height]);
+
+    useEffect(() => {
+        if (
+            formData.roofType != "" &&
+            formData.ceiling != "" &&
+            formData.startTime != "" &&
+            formData.endTime != "" &&
+            formData.province != "" &&
+            formData.kRoofColor != 0 &&
+            formData.width != 0 &&
+            formData.depth != 0
+        ) {
+            const ucltRoofData = findUCLTDRoofTimeRange(
+                roofData,
+                formData.roofType,
+                formData.ceiling,
+                formData.startTime,
+                formData.endTime
+            )
+            console.log("ucltRoofData: ", ucltRoofData)
+
+            const climatedt = getClimateData(
+                climateData,
+                formData.province
+            )
+            const interpolated = interpolateLMByLat(lmWallAndRoofData, Number(climatedt?.Latitude))
+            const interpolatedHOR = interpolated.filter((d) => d.Direction === "HOR")
+            console.log(`interpolated ${climatedt?.Latitude}: `, interpolated)
+            console.log(`interpolatedHOR ${climatedt?.Latitude}: `, interpolatedHOR)
+
+            const uValueRoof = findUvalue(
+                roofData,
+                formData.roofType,
+                formData.ceiling
+            )
+            console.log("uValueRoof: ", uValueRoof)
+
+            const roofArea = formData.width * formData.depth
+
+            const cltdByMonth = interpolatedHOR.map((lmRow) => {
+                const month = lmRow.Month;
+
+                // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
+                const CLTDTime = ucltRoofData.map((ucltRow) => {
+                    const CLTDs = (
+                        (formData.kRoofColor * (Number(ucltRow.CLTDRoof) + Number(lmRow.LM))) +
+                        (25.5 - Number(climatedt?.DB_In)) +
+                        (Number(climatedt?.T_o) - 29.4)
+                    )
+
+                    const qRoof = CLTDs * Number(uValueRoof) * roofArea 
+
+                    return (
+                        {
+                            Hour: ucltRow.Hour,
+                            qRoof: (qRoof),
+                        }
+                    )
+                });
+
+                return {
+                    Month: month,
+                    CLTDTime,
+                };
+            });
+
+            console.log("cltdByMonth: ", cltdByMonth);
+
+        }
+
+    },
+        [
+            formData.startTime,
+            formData.endTime,
+            formData.roofType,
+            formData.ceiling,
+            formData.province,
+            formData.kRoofColor,
+            formData.width,
+            formData.depth
+        ]
+    )
+
+    // console.log("doorValue: ", formData.doorValue)
+    // console.log("windowValue: ", formData.windowValue)
+    // console.log("wallValue: ", formData.wallValue)
+    // console.log("calculateVariable: ", calculateVariable)
 
     const airConditionerTypes = [
         { id: 1, title: "Wall Type", image: "/images/option/wall_type.png" },
@@ -402,46 +671,27 @@ function MainPage() {
         }
     };
 
-    // @ts-ignore
-    const locationArea = createListCollection({
-        items: [
-            { label: "ชั้นบนสุด (ใต้หลังคา)", value: "1" },
-            { label: "ชั้นอื่น ๆ", value: "2" },
-            { label: "ชั้นล่างสุด", value: "3" },
-        ],
-    });
-
-    // @ts-ignore
-    const ceilingArea = createListCollection({
-        items: [
-            { label: "มีมากกว่า 30 ซม.", value: "1" },
-            { label: "มีน้อยกว่า 30 ซม.", value: "2" },
-            { label: "ไม่มี", value: "3" },
-        ],
-    });
-
     const directions = [
-        { label: "ทิศเหนือ", value: "1" },
-        { label: "ทิศตะวันออกเฉียงเหนือ", value: "2" },
-        { label: "ทิศตะวันออก", value: "3" },
-        { label: "ทิศตะวันออกเฉียงใต้", value: "4" },
-        { label: "ทิศใต้", value: "5" },
-        { label: "ทิศตะวันตกเฉียงใต้", value: "6" },
-        { label: "ทิศตะวันตก", value: "W" },
-        { label: "ทิศตะวันตกเฉียงเหนือ", value: "7" },
-        { label: "ไม่มี", value: "8" },
-    ]
+        { label: "ทิศเหนือ (N)", value: "N" },
+        { label: "ทิศตะวันออกเฉียงเหนือ (NE)", value: "NE" },
+        { label: "ทิศตะวันออก (E)", value: "E" },
+        { label: "ทิศตะวันออกเฉียงใต้ (SE)", value: "SE" },
+        { label: "ทิศใต้ (S)", value: "S" },
+        { label: "ทิศตะวันตกเฉียงใต้ (SW)", value: "SW" },
+        { label: "ทิศตะวันตก (W)", value: "W" },
+        { label: "ทิศตะวันตกเฉียงเหนือ (NW)", value: "NW" },
+        { label: "ไม่มี", value: "NONE" },
+    ];
+
 
     // @ts-ignore
-    const hourOptions = createListCollection({
-        items: Array.from({ length: 24 }, (_, i) => {
-            const hour = (i + 1).toString().padStart(2, "0");
-            return {
-                value: hour, // ต้องเป็น string
-                label: `${hour}:00 น.`,
-            };
-        }),
-    });
+    const hourOptions = Array.from({ length: 24 }, (_, i) => {
+        const hour = (i + 1).toString();
+        return {
+            value: hour,
+            label: `${hour.padStart(2, "0")}:00 น.`,
+        };
+    })
 
     // @ts-ignore
     const roofShapes = createListCollection({
@@ -618,21 +868,17 @@ function MainPage() {
                                                     {/* เวลาเริ่มต้น */}
                                                     <GridItem colSpan={1}>
                                                         <FormControl fullWidth>
-                                                            <InputLabel id="demo-simple-select-label">Age</InputLabel>
                                                             <Select
-                                                                labelId="demo-simple-select-label"
-                                                                id="demo-simple-select"
-                                                                value={""}
-                                                                label="Age"
-                                                            // onChange={handleChange}
+                                                                value={formData.startTime}
+                                                                onChange={(e) => setFormData((prev) => ({ ...prev, startTime: e.target.value }))}
                                                             >
-                                                                {/* {
-                                                                    provinces.map((item, index) => {
+                                                                {
+                                                                    hourOptions.map((item, index) => {
                                                                         return (
-                                                                            <MenuItem key={index} value={item.label}>{item.label}</MenuItem>
+                                                                            <MenuItem key={index} value={item.value}>{item.label}</MenuItem>
                                                                         )
                                                                     })
-                                                                } */}
+                                                                }
                                                             </Select>
                                                         </FormControl>
                                                     </GridItem>
@@ -640,334 +886,248 @@ function MainPage() {
                                                     {/* เวลาสิ้นสุด */}
                                                     <GridItem colSpan={1}>
                                                         <FormControl fullWidth>
-                                                            <InputLabel id="demo-simple-select-label">Age</InputLabel>
                                                             <Select
-                                                                labelId="demo-simple-select-label"
-                                                                id="demo-simple-select"
-                                                                value={''}
-                                                                label="Age"
-                                                            // onChange={handleChange}
+                                                                value={formData.endTime}
+                                                                onChange={(e) => setFormData((prev) => ({ ...prev, endTime: e.target.value }))}
                                                             >
-                                                                {/* {
-                                                                    provinces.map((item, index) => {
+                                                                {
+                                                                    hourOptions.map((item, index) => {
                                                                         return (
                                                                             <MenuItem key={index} value={item.value}>{item.label}</MenuItem>
                                                                         )
                                                                     })
-                                                                } */}
+                                                                }
                                                             </Select>
                                                         </FormControl>
                                                     </GridItem>
                                                 </Grid>
                                             </Field.Root>
                                         </GridItem>
+
                                         <GridItem colSpan={1}>
-                                            {/* <Select.Root collection={ceilingArea} value={formData.ceilingAreaId} onValueChange={(e) => setFormData((prev) => ({ ...prev, ceilingAreaId: e.value }))}>
-                                                <Select.HiddenSelect />
-                                                <Select.Label display={'flex'} alignItems={'center'} gap={2}>
-                                                    พื้นที่ฝ้าเพดาน
-                                                    <Dialog.Root
-                                                        placement={'center'}
-                                                        motionPreset="slide-in-bottom"
-                                                    >
-                                                        <Dialog.Trigger asChild>
-                                                            <Info size={16} />
-                                                        </Dialog.Trigger>
-                                                        <Dialog.Backdrop bg="blackAlpha.400" />
-                                                        <Portal>
-                                                            <Dialog.Backdrop />
-                                                            <Dialog.Positioner>
-                                                                <Dialog.Content bg={'white'} color={'black'}>
-                                                                    <Dialog.Header>
-                                                                        <Dialog.Title>คำอธิบายพื้นที่ฝ้าเพดาน</Dialog.Title>
-                                                                    </Dialog.Header>
-                                                                    <Dialog.Body>
-                                                                        <Box display={'flex'} flexDirection={'column'} alignItems={'center'} gap={4}>
-                                                                            <Image
-                                                                                height="200px"
-                                                                                src="https://i.pinimg.com/736x/ca/7b/6a/ca7b6a0a99704261a18c972ae35718df.jpg"
-                                                                            />
-                                                                            <p>
-                                                                                Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-                                                                                Sed do eiusmod tempor incididunt ut labore et dolore magna
-                                                                                aliqua.
-                                                                            </p>
-                                                                        </Box>
-
-                                                                    </Dialog.Body>
-                                                                    <Dialog.CloseTrigger asChild>
-                                                                        <CloseButton size="sm" color={'gray'} />
-                                                                    </Dialog.CloseTrigger>
-                                                                </Dialog.Content>
-                                                            </Dialog.Positioner>
-                                                        </Portal>
-                                                    </Dialog.Root>
-                                                </Select.Label>
-                                                <Select.Control>
-                                                    <Select.Trigger>
-                                                        <Select.ValueText placeholder="มีพื้นที่ฝ้าเพดานหรือไม่" />
-                                                    </Select.Trigger>
-                                                    <Select.IndicatorGroup>
-                                                        <Select.Indicator />
-                                                    </Select.IndicatorGroup>
-                                                </Select.Control>
-                                                <Portal>
-                                                    <Select.Positioner>
-                                                        <Select.Content>
-                                                            {ceilingArea.items.map((item) => (
-                                                                <Select.Item item={item.value} key={item.value}>
-                                                                    {item.label}
-                                                                </Select.Item>
-                                                            ))}
-                                                        </Select.Content>
-                                                    </Select.Positioner>
-                                                </Portal>
-                                            </Select.Root> */}
-                                        </GridItem>
-                                        <GridItem colSpan={1}>
-                                            {/* <Select.Root
-                                                collection={buildingTypes}
-                                                value={formData.buildingTypeId}
-                                                onValueChange={(e) => setFormData((prev) => ({ ...prev, buildingTypeId: e.value }))}
-                                            >
-                                                <Select.HiddenSelect />
-                                                <Select.Label>ประเภทอาคาร</Select.Label>
-                                                <Select.Control>
-                                                    <Select.Trigger>
-                                                        <Select.ValueText placeholder="ระบุประเภทอาคาร" />
-                                                    </Select.Trigger>
-                                                    <Select.IndicatorGroup>
-                                                        <Select.Indicator />
-                                                    </Select.IndicatorGroup>
-                                                </Select.Control>
-                                                <Portal>
-                                                    <Select.Positioner>
-                                                        <Select.Content>
-                                                            {buildingTypes.items.map((item) => (
-                                                                <Select.Item item={item.value} key={item.value}>
-                                                                    {item.label}
-                                                                </Select.Item>
-                                                            ))}
-                                                        </Select.Content>
-                                                    </Select.Positioner>
-                                                </Portal>
-                                            </Select.Root> */}
-                                        </GridItem>
-
-                                        {/* {formData.buildingTypeId[0] === "2" && (
-                                            <Collapsible.Root open={formData.buildingTypeId[0] === "2"}>
-                                                <Collapsible.Content height={"100%"}>
-                                                    <GridItem colSpan={1}>
-                                                        
-                                                    </GridItem>
-                                                </Collapsible.Content>
-                                            </Collapsible.Root>
-                                        )} */}
-
-
-                                    </Grid>
-                                </GridItem>
-                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5}>
-                                    <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
-                                        <GridItem>
                                             <Field.Root>
-                                                <Field.Label>ผนังห้อง (Wall)</Field.Label>
-                                                <Field.Label>ระบุทิศผนังที่โดนแดดและไม่ติดกับห้องอื่น (เลือกได้มากกว่า1)</Field.Label>
-                                                <FormControl sx={{ width: "100%" }}>
-                                                    <InputLabel id="demo-multiple-chip-label">Chip</InputLabel>
+                                                <Field.Label>มีพื้นที่ฝ้าเพดานหรือไม่</Field.Label>
+                                                <FormControl fullWidth>
                                                     <Select
-                                                        labelId="demo-multiple-chip-label"
-                                                        id="demo-multiple-chip"
-                                                        multiple
-                                                        // value={personName}
-                                                        // onChange={handleChange}
-                                                        input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
-                                                    // MenuProps={MenuProps}
+                                                        value={formData.ceiling}
+                                                        onChange={(e) => setFormData((prev) => ({ ...prev, ceiling: e.target.value }))}
                                                     >
-                                                        {/* {names.map((name) => (
-                                                        <MenuItem
-                                                            key={name}
-                                                            value={name}
-                                                            style={getStyles(name, personName, theme)}
-                                                        >
-                                                            {name}
-                                                        </MenuItem>
-                                                    ))} */}
+                                                        <MenuItem value={"HaveCeilinglessthan"}>มีน้อยกว่า 30 cm</MenuItem>
+                                                        <MenuItem value={"HaveCeilinggreaterthan"}>มีมากกว่า 30 cm</MenuItem>
+                                                        <MenuItem value={"NoCeiling"}>ไม่มี</MenuItem>
                                                     </Select>
                                                 </FormControl>
                                             </Field.Root>
                                         </GridItem>
 
-                                        <GridItem>
+                                        <GridItem colSpan={1}>
                                             <Field.Root>
-                                                <Field.Label>ระบุข้อมูลผนังห้อง</Field.Label>
-                                                <Table.Root size="sm" variant={"outline"}>
-                                                    <Table.Header>
-                                                        <Table.Row>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                ทิศที่เลือก
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}></Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                วัสดุ
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                สีภายนอก
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                กันสาด
-                                                            </Table.ColumnHeader>
-                                                        </Table.Row>
-                                                    </Table.Header>
-                                                    <Table.Body>
-                                                        {/* {formData.wallSunlightDirectionsId.map((id) => {
-                                                            const direction = directions.items.find((item) => item.value === id);
-
-                                                            return (
-                                                                direction && (
-                                                                    <Table.Row key={direction?.value}>
-                                                                        <Table.Cell textAlign={"center"}>{direction?.label}</Table.Cell>
-                                                                        <Table.Cell>
-                                                                            
-                                                                        </Table.Cell>
-                                                                        <Table.Cell>
-                                                                            
-                                                                        </Table.Cell>
-                                                                        <Table.Cell>
-                                                                            
-                                                                        </Table.Cell>
-                                                                        <Table.Cell>
-                                                                            
-                                                                        </Table.Cell>
-                                                                    </Table.Row>
-                                                                )
-                                                            );
-                                                        })} */}
-                                                    </Table.Body>
-                                                </Table.Root>
+                                                <Field.Label>ตำแหน่งห้อง</Field.Label>
+                                                <FormControl fullWidth>
+                                                    <Select
+                                                        value={formData.roomPosition}
+                                                        onChange={(e) => setFormData((prev) => ({ ...prev, roomPosition: e.target.value }))}
+                                                    >
+                                                        <MenuItem value={"Top"}>ชั้นบนสุด/อาคารชั้นเดียว (ใต้หลังคา)</MenuItem>
+                                                        <MenuItem value={"Other"}>ชั้นอื่น ๆ</MenuItem>
+                                                    </Select>
+                                                </FormControl>
                                             </Field.Root>
                                         </GridItem>
                                     </Grid>
                                 </GridItem>
 
-                                {/* Roof */}
-                                {/* {(formData.locationAreaId[0] === "1" || formData.buildingTypeId[0] === "1") && (
-                                    <Collapsible.Root open={formData.locationAreaId[0] === "1" || formData.buildingTypeId[0] === "1"}>
-                                        <Collapsible.Content height={"100%"}>
-                                            <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} height={"100%"}>
-                                                <Grid
-                                                    gap={5}
-                                                >
-                                                    <GridItem>
-                                                        <Field.Root>
-                                                            <Field.Label>หลังคา (Roof)</Field.Label>
-                                                            <Field.Label>ระบุข้อมูลหลังคา</Field.Label>
-                                                            <Table.Root size="sm" variant={"outline"}>
-                                                                <Table.Header>
-                                                                    <Table.Row>
-                                                                        <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                            วัสดุ
-                                                                        </Table.ColumnHeader>
-                                                                        <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                            ฉนวน
-                                                                        </Table.ColumnHeader>
-                                                                        <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                            สีภายนอก
-                                                                        </Table.ColumnHeader>
+                                {/* Wall */}
+                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} >
+                                    <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
+                                        <GridItem>
+                                            <Field.Root>
+                                                <Field.Label>ผนัง (wall)</Field.Label>
+                                                <Field.Label>ระบุทิศผนังที่โดนแดดและไม่ติดกับห้องอื่น (เลือกได้มากกว่า1)</Field.Label>
+                                                <FormControl sx={{ width: "100%" }}>
+                                                    <Select
+                                                        multiple
+                                                        value={formData.wallValue.map(d => d.directionName)}
+                                                        onChange={handleWallDirectionChange}
+                                                        input={<OutlinedInput />}
+                                                        renderValue={(selected) => (
+                                                            <Box display={'flex'} flexWrap={'wrap'} gap={0.5}>
+                                                                {selected?.map((value) => (
+                                                                    <Chip key={value} label={value} />
+                                                                ))}
+                                                            </Box>
+                                                        )}
+                                                    >
+                                                        {directions.map((item, index) => (
+                                                            <MenuItem
+                                                                key={index}
+                                                                value={item.label}
+                                                            >
+                                                                {item.label}
+                                                            </MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                            </Field.Root>
+                                        </GridItem>
+
+                                        <Collapse in={(formData.wallValue.length > 0)} timeout={400} unmountOnExit>
+                                            <GridItem>
+                                                <Field.Root>
+                                                    <Field.Label>ระบุข้อมูลผนัง</Field.Label>
+                                                    <Table.Root size="sm" variant={"outline"}>
+                                                        <Table.Header>
+                                                            <Table.Row>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ทิศทาง
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ตำแหน่ง
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    วัสดุ
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    สีภายนอก
+                                                                </Table.ColumnHeader>
+                                                            </Table.Row>
+                                                        </Table.Header>
+                                                        <Table.Body>
+                                                            {formData.wallValue.map((item, index) => {
+                                                                return (
+                                                                    <Table.Row key={index}>
+                                                                        <Table.Cell textAlign={"center"}>{item.directionName}</Table.Cell>
+
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                value={item.position ?? ''}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value;
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.wallValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            position: newValue,
+                                                                                        };
+                                                                                        return { ...prev, wallValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value="Width">ด้านกว้าง</MenuItem>
+                                                                                <MenuItem value="Depth">ด้านยาว</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
+
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                value={item.material}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value;
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.wallValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            material: newValue,
+                                                                                        };
+                                                                                        return { ...prev, wallValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value="BrickPlaster">ผนังอิฐฉาบปูน</MenuItem>
+                                                                                <MenuItem value="WallwithInsulation">ผนังมีฉนวนตรงกลาง</MenuItem>
+                                                                                <MenuItem value="Prefabricated">ผนังสำเร็จรูป</MenuItem>
+                                                                                <MenuItem value="Glass">กระจก</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
+
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                value={item.kWallColor}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = Number(e.target.value);
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.wallValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            kWallColor: newValue,
+                                                                                        };
+                                                                                        return { ...prev, wallValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={0.65}>สีสว่าง</MenuItem>
+                                                                                <MenuItem value={1}>สีเข้ม</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
                                                                     </Table.Row>
-                                                                </Table.Header>
-                                                                <Table.Body>
-                                                                    <Table.Row>
-                                                                        <Table.Cell>
-                                                                            <Select.Root
-                                                                                collection={roofShapes}
-                                                                            >
-                                                                                <Select.HiddenSelect />
-                                                                                <Select.Control>
-                                                                                    <Select.Trigger>
-                                                                                        <Select.ValueText placeholder="" />
-                                                                                    </Select.Trigger>
-                                                                                    <Select.IndicatorGroup>
-                                                                                        <Select.Indicator />
-                                                                                    </Select.IndicatorGroup>
-                                                                                </Select.Control>
-                                                                                <Portal>
-                                                                                    <Select.Positioner>
-                                                                                        <Select.Content>
-                                                                                            <Select.Item item={"1"} key={1}>
-                                                                                                {"มี"}
-                                                                                            </Select.Item>
-                                                                                            <Select.Item item={"2"} key={2}>
-                                                                                                {"ไม่มี"}
-                                                                                            </Select.Item>
-                                                                                        </Select.Content>
-                                                                                    </Select.Positioner>
-                                                                                </Portal>
-                                                                            </Select.Root>
-                                                                        </Table.Cell>
-                                                                        <Table.Cell>
-                                                                            <Select.Root
-                                                                                collection={roofShapes}
-                                                                            >
-                                                                                <Select.HiddenSelect />
-                                                                                <Select.Control>
-                                                                                    <Select.Trigger>
-                                                                                        <Select.ValueText placeholder="" />
-                                                                                    </Select.Trigger>
-                                                                                    <Select.IndicatorGroup>
-                                                                                        <Select.Indicator />
-                                                                                    </Select.IndicatorGroup>
-                                                                                </Select.Control>
-                                                                                <Portal>
-                                                                                    <Select.Positioner>
-                                                                                        <Select.Content>
-                                                                                            <Select.Item item={"1"} key={1}>
-                                                                                                {"มี"}
-                                                                                            </Select.Item>
-                                                                                            <Select.Item item={"2"} key={2}>
-                                                                                                {"ไม่มี"}
-                                                                                            </Select.Item>
-                                                                                        </Select.Content>
-                                                                                    </Select.Positioner>
-                                                                                </Portal>
-                                                                            </Select.Root>
-                                                                        </Table.Cell>
-                                                                        <Table.Cell>
-                                                                            <Select.Root
-                                                                                collection={colors}
-                                                                            >
-                                                                                <Select.HiddenSelect />
-                                                                                <Select.Control>
-                                                                                    <Select.Trigger>
-                                                                                        <Select.ValueText placeholder="" />
-                                                                                    </Select.Trigger>
-                                                                                    <Select.IndicatorGroup>
-                                                                                        <Select.Indicator />
-                                                                                    </Select.IndicatorGroup>
-                                                                                </Select.Control>
-                                                                                <Portal>
-                                                                                    <Select.Positioner>
-                                                                                        <Select.Content>
-                                                                                            {colors.items.map((item) => (
-                                                                                                <Select.Item item={item.value} key={item.value}>
-                                                                                                    {item.label}
-                                                                                                </Select.Item>
-                                                                                            ))}
-                                                                                        </Select.Content>
-                                                                                    </Select.Positioner>
-                                                                                </Portal>
-                                                                            </Select.Root>
-                                                                        </Table.Cell>
-                                                                    </Table.Row>
-                                                                </Table.Body>
-                                                            </Table.Root>
-                                                        </Field.Root>
-                                                    </GridItem>
-                                                </Grid>
+                                                                );
+                                                            })}
+                                                        </Table.Body>
+                                                    </Table.Root>
+                                                </Field.Root>
                                             </GridItem>
-                                        </Collapsible.Content>
-                                    </Collapsible.Root>
-                                )} */}
+                                        </Collapse>
+                                    </Grid>
+                                </GridItem>
+
+                                {/* Roof */}
+                                <Zoom in={formData.roomPosition === "Top"} timeout={400} unmountOnExit>
+                                    <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} height={"100%"}>
+                                        <Grid
+                                            gap={5}
+                                        >
+                                            <GridItem>
+                                                <Field.Root>
+                                                    <Field.Label>หลังคา (Roof)</Field.Label>
+                                                    <Field.Label>ระบุข้อมูลหลังคา</Field.Label>
+                                                    <Table.Root size="sm" variant={"outline"}>
+                                                        <Table.Header>
+                                                            <Table.Row>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    วัสดุ
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    สีภายนอก
+                                                                </Table.ColumnHeader>
+                                                            </Table.Row>
+                                                        </Table.Header>
+                                                        <Table.Body>
+                                                            <Table.Row>
+                                                                <Table.Cell>
+                                                                    <FormControl fullWidth>
+                                                                        <Select
+                                                                            value={formData.roofType}
+                                                                            onChange={(e) => setFormData((prev) => ({ ...prev, roofType: e.target.value }))}
+                                                                        >
+                                                                            <MenuItem value={"Concrete"}>หลังคาคอนกรีต</MenuItem>
+                                                                            <MenuItem value={"ConcreteTile"}>หลังคากระเบื้องคอนกรีต</MenuItem>
+                                                                            <MenuItem value={"MetalSheet"}>หลังคาเมทัลชีท</MenuItem>
+                                                                        </Select>
+                                                                    </FormControl>
+                                                                </Table.Cell>
+                                                                <Table.Cell>
+                                                                    <FormControl fullWidth>
+                                                                        <Select
+                                                                            value={formData.kRoofColor}
+                                                                            onChange={(e) => setFormData((prev) => ({ ...prev, kRoofColor: Number(e.target.value) }))}
+                                                                        >
+                                                                            <MenuItem value={0.5}>สีสว่าง</MenuItem>
+                                                                            <MenuItem value={1}>สีเข้ม</MenuItem>
+                                                                        </Select>
+                                                                    </FormControl>
+                                                                </Table.Cell>
+                                                            </Table.Row>
+                                                        </Table.Body>
+                                                    </Table.Root>
+                                                </Field.Root>
+                                            </GridItem>
+                                        </Grid>
+                                    </GridItem>
+                                </Zoom>
+
 
                                 {/* Floor */}
                                 {/* {formData.locationAreaId[0] === "3" || formData.buildingTypeId[0] === "1" && (
@@ -1188,6 +1348,7 @@ function MainPage() {
 
                                                                     <Table.Cell>
                                                                         <TextField
+                                                                            type="number"
                                                                             sx={{ width: '100%' }}
                                                                             value={item.quantity}
                                                                             onChange={(e) => {
@@ -1372,6 +1533,7 @@ function MainPage() {
 
                                                                     <Table.Cell>
                                                                         <TextField
+                                                                            type="number"
                                                                             sx={{ width: '100%' }}
                                                                             value={item.quantity}
                                                                             onChange={(e) => {

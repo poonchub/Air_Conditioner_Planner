@@ -11,6 +11,6 @@ export function getClimateData(
     province: string,
 ): ClimateDataRow | undefined {
     return data.find(
-        (r) => r.Province.toLowerCase() === province.toLowerCase()
+        (r) => r.Province.trim().toLowerCase() === province.trim().toLowerCase()
     );
 }

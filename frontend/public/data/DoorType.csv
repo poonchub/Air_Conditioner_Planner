@@ -1,4 +1,4 @@
-DoorType,Width,Height,,cfm
+DoorType,Width,Height,DoorArea,cfm
 SingleSwingDoor,0.8,2,1.6,1.6
 DoubleLeafDoor,1.6,2,3.2,3.2
 SingleSlidingDoor,1,2.1,2.1,1.05

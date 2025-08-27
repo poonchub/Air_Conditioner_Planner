@@ -2,7 +2,7 @@ export interface DoorTypeRow {
     DoorType:   string;
     Width:  string;
     Height: string;
-    Area:   string;
+    DoorArea:   string;
     cfm:    string;
     
     [key: string]: string;

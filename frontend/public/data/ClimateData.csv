@@ -1,4 +1,4 @@
-Province,latitude,DB_OutMax,WB,DBRange,DB_In,RH_Out,W_Out,W_In,T_o
+Province,Latitude,DB_OutMax,WB,DBRange,DB_In,RH_Out,W_Out,W_In,T_o
 Bangkok,13.73,35.5,26.8,7.1,25,69,0.0098,0.025,31.95
 Krabi,8.09,34.6,25.3,9.1,25,82,0.0098,0.028,30.05
 Kanchanaburi,14.02,37.8,25.1,10.3,25,61,0.0098,0.025,32.65
