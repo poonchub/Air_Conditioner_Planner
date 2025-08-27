@@ -1,4 +1,4 @@
-WindowType,Width,Height,AreaWindow,Perimeter,cfm
+WindowType,Width,Height,WindowArea,Perimeter,cfm
 SwingWindow,0.6,1.1,0.66,3.4,1.7
 SwingDoubleWindow,1.2,1.1,1.32,4.6,2.3
 AwningWindow,0.8,1.1,0.88,3.8,1.9
