@@ -2,7 +2,7 @@ import { Box, Button, Collapsible, Container, createListCollection, Field, Flex,
 import { useEffect, useState } from "react";
 import "./MainPage.css";
 import { AirVent, FileText, Home, MapPin } from "lucide-react";
-import { Chip, Collapse, FormControl, InputLabel, MenuItem, OutlinedInput, Select, TextField, Zoom, type SelectChangeEvent } from "@mui/material";
+import { Chip, Collapse, FormControl, MenuItem, OutlinedInput, Select, TextField, Zoom, type SelectChangeEvent } from "@mui/material";
 import BuildingSelector from "@/components/BuildingSelector/BuildingSelector";
 import AirConditionerSelector from "@/components/AirConditionerSelector/AirConditionerSelector";
 import { findMaximumLightingPowerDensity, loadWattLightData } from "@/data/WattLightService";
