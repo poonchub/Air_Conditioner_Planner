@@ -25,6 +25,14 @@ import type { UCLTDRoofRow } from "@/types/UCLTDRoofRow";
 import { findUCLTDRoofTimeRange, findUvalue, loadUCLTDRoofData } from "@/data/UCLTDRoofService";
 import type { LMWallAndRoofRow } from "@/types/LMWallAndRoofRow";
 import { interpolateLMByLat, loadLMWallAndRoofData } from "@/data/LMWallAndRoofService";
+import type { GlassCLFwithShadingRow } from "@/types/GlassCLFwithShadingRow";
+import type { GlassCLFnoShadingRow } from "@/types/GlassCLFnoShadingRow";
+import { findGlassCLFwithShadingTimeRange, loadGlassCLFwithShadingData } from "@/data/GlassCLFwithShadingService";
+import { findGlassCLFnoShadingTimeRange, loadGlassCLFnoShadingData } from "@/data/GlassCLFnoShadingService";
+import type { SHGFtoShadeRow } from "@/types/SHGFtoShadeRow";
+import type { SHGFNoShadeRow } from "@/types/SHGFNoShadeRow";
+import { findSHGFNoShade, interpolateSHGFNoShadeByLat, loadSHGFNoShadeData } from "@/data/SHGFNoShadeService";
+import { findSHGFtoShade, loadSHGFtoShadeData } from "@/data/SHGFtoShadeService";
 
 export const BASE_URL = import.meta.env.BASE_URL
 
@@ -51,6 +59,7 @@ type DoorValue = {
     haveCurtain: boolean;
     quantity: number;
     cfm: number;
+    glassType: string;
 };
 
 type WindowValue = {
@@ -61,6 +70,7 @@ type WindowValue = {
     haveCurtain: boolean;
     quantity: number;
     cfm: number;
+    glassType: string;
 }
 
 type WallValue = {
@@ -70,6 +80,9 @@ type WallValue = {
     kWallColor: number;
     wallArea: number;
     glassArea: number;
+    haveShade: boolean;
+    haveCurtain: boolean;
+    glassType: string;
 }
 
 type FormDataProps = {
@@ -158,6 +171,10 @@ function MainPage() {
     const [climateData, setClimateData] = useState<ClimateDataRow[]>([])
     const [roofData, setRoofData] = useState<UCLTDRoofRow[]>([])
     const [lmWallAndRoofData, setLMWallAndRoofData] = useState<LMWallAndRoofRow[]>([])
+    const [glassCLFwithShadingData, setGlassCLFwithShadingData] = useState<GlassCLFwithShadingRow[]>([])
+    const [glassCLFnoShadingData, setGlassCLFnoShading] = useState<GlassCLFnoShadingRow[]>([])
+    const [SHGFtoShadeData, setSHGFtoShadeData] = useState<SHGFtoShadeRow[]>([])
+    const [SHGFNoShadeData, setSHGFNoShadeData] = useState<SHGFNoShadeRow[]>([])
 
     const handleDoorDirectionChange = (event: SelectChangeEvent<string[]>) => {
         const {
@@ -178,6 +195,7 @@ function MainPage() {
                             haveCurtain: false,
                             quantity: 0,
                             cfm: 0,
+                            glassType: ""
                         },
                     ],
                 };
@@ -197,6 +215,7 @@ function MainPage() {
                         haveCurtain: false,
                         quantity: 1,
                         cfm: 0,
+                        glassType: ""
                     });
                 }
             });
@@ -231,7 +250,8 @@ function MainPage() {
                             haveShade: false,
                             haveCurtain: false,
                             quantity: 0,
-                            cfm: 0
+                            cfm: 0,
+                            glassType: ""
                         },
                     ],
                 };
@@ -250,7 +270,8 @@ function MainPage() {
                         haveShade: false,
                         haveCurtain: false,
                         quantity: 1,
-                        cfm: 0
+                        cfm: 0,
+                        glassType: ""
                     });
                 }
             });
@@ -282,7 +303,10 @@ function MainPage() {
                             material: "",
                             kWallColor: 0,
                             wallArea: 0,
-                            glassArea: 0
+                            glassArea: 0,
+                            haveShade: false,
+                            haveCurtain: false,
+                            glassType: ""
                         },
                     ],
                 };
@@ -301,7 +325,10 @@ function MainPage() {
                         material: "",
                         kWallColor: 0.65,
                         wallArea: 0,
-                        glassArea: 0
+                        glassArea: 0,
+                        haveShade: false,
+                        haveCurtain: false,
+                        glassType: ""
                     });
                 }
             });
@@ -324,6 +351,10 @@ function MainPage() {
         loadClimateData().then(setClimateData)
         loadUCLTDRoofData().then(setRoofData)
         loadLMWallAndRoofData().then(setLMWallAndRoofData)
+        loadGlassCLFwithShadingData().then(setGlassCLFwithShadingData)
+        loadGlassCLFnoShadingData().then(setGlassCLFnoShading)
+        loadSHGFNoShadeData().then(setSHGFNoShadeData)
+        loadSHGFtoShadeData().then(setSHGFtoShadeData)
     }, []);
 
     useEffect(() => {
@@ -604,7 +635,7 @@ function MainPage() {
                         (Number(climatedt?.T_o) - 29.4)
                     )
 
-                    const qRoof = CLTDs * Number(uValueRoof) * roofArea 
+                    const qRoof = CLTDs * Number(uValueRoof) * roofArea
 
                     return (
                         {
@@ -636,6 +667,123 @@ function MainPage() {
             formData.depth
         ]
     )
+
+    useEffect(() => {
+        if (
+            formData.wallValue &&
+            formData.startTime != "" &&
+            formData.endTime != "" &&
+            formData.province != ""
+        ) {
+            const wallGlass = formData.wallValue.filter((wall) => wall.material === "Glass")
+            console.log("wallGlass", wallGlass)
+
+            const selectedWallGlass = getSelectedWallGlass(wallGlass);
+            console.log("selectedWallGlass", selectedWallGlass);
+
+            let CLFGlassData = []
+            let SHGFGlassDataAllMonth = []
+
+            const climatedt = getClimateData(
+                climateData,
+                formData.province
+            )
+            if (selectedWallGlass?.haveShade) {
+                SHGFGlassDataAllMonth = findSHGFtoShade(
+                    SHGFtoShadeData,
+                    selectedWallGlass.directionName,
+                )
+            } else {
+                SHGFGlassDataAllMonth = interpolateSHGFNoShadeByLat(
+                    SHGFNoShadeData,
+                    Number(climatedt?.Latitude)
+                )
+            }
+            console.log("SHGFGlassDataAllMonth: ", SHGFGlassDataAllMonth)
+
+            const monthsInRange = ["Apr", "May", "Jun", "Jul", "Aug"];
+            const filteredSHGFGlassData = SHGFGlassDataAllMonth.filter(
+                (item) => monthsInRange.includes(item.Month)
+            );
+
+            console.log("filteredSHGFGlassData: ", filteredSHGFGlassData)
+
+            if (selectedWallGlass?.haveCurtain) {
+                CLFGlassData = findGlassCLFwithShadingTimeRange(
+                    glassCLFwithShadingData,
+                    selectedWallGlass.directionName,
+                    formData.startTime,
+                    formData.endTime
+                )
+            } else {
+                CLFGlassData = findGlassCLFnoShadingTimeRange(
+                    glassCLFnoShadingData,
+                    selectedWallGlass?.directionName ?? "",
+                    formData.startTime,
+                    formData.endTime
+                )
+            }
+            console.log("CLFGlassData: ", CLFGlassData)
+
+            // const qGlassByMonth = filteredSHGFGlassData.map((shgfRow) => {
+            //     const month = shgfRow.Month;
+
+            //     // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
+            //     const CLFGTime = CLFGlassData.map((clfgRow) => {
+            //         const CLTDs = (
+                        
+            //         )
+
+            //         const qRoof = CLTDs * Number(uValueRoof) * roofArea
+
+            //         return (
+            //             {
+            //                 Hour: clfgRow.Hour,
+            //                 qGlass: (qRoof),
+            //             }
+            //         )
+            //     });
+
+            //     return {
+            //         Month: month,
+            //         CLFGTime,
+            //     };
+            // });
+
+            // console.log("qGlassByMonth: ", qGlassByMonth);
+        }
+    },
+        [
+            formData.wallValue,
+            formData.startTime,
+            formData.endTime,
+            formData.province
+        ]
+    )
+
+    function getSelectedWallGlass(wallGlass: typeof formData.wallValue): typeof formData.wallValue[number] | undefined {
+        if (!wallGlass || wallGlass.length === 0) return undefined;
+
+        const directionPriority: Record<string, number> = {
+            "W": 1,
+            "NW": 2,
+            "E": 3,
+            "NE": 4,
+            "SW": 5,
+            "SE": 6,
+            "N": 7,
+            "S": 8,
+        };
+
+        return [...wallGlass]
+            .sort((a, b) => {
+                if (b.glassArea !== a.glassArea) {
+                    return b.glassArea - a.glassArea; // glassArea มากสุดมาก่อน
+                }
+                return directionPriority[a.directionName] - directionPriority[b.directionName]; // ถ้าเท่ากันใช้ทิศ
+            })[0];
+    }
+
 
     // console.log("doorValue: ", formData.doorValue)
     // console.log("windowValue: ", formData.windowValue)
@@ -792,7 +940,7 @@ function MainPage() {
                             </Heading>
 
                             <Grid gridTemplateColumns={"repeat(2, 1fr)"} gap={10} padding={"1.4rem 2rem "}>
-                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5}>
+                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
                                     <Grid gridTemplateColumns={"repeat(2, 1fr)"} gap={5}>
                                         <GridItem colSpan={2}>
                                             <Field.Root>
@@ -938,7 +1086,7 @@ function MainPage() {
                                 </GridItem>
 
                                 {/* Wall */}
-                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} >
+                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
                                     <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
                                         <GridItem>
                                             <Field.Root>
@@ -961,7 +1109,7 @@ function MainPage() {
                                                         {directions.map((item, index) => (
                                                             <MenuItem
                                                                 key={index}
-                                                                value={item.label}
+                                                                value={item.value}
                                                             >
                                                                 {item.label}
                                                             </MenuItem>
@@ -986,6 +1134,15 @@ function MainPage() {
                                                                 </Table.ColumnHeader>
                                                                 <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
                                                                     วัสดุ
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ชนิดกระจก
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    กันสาด
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ม่านบังแดด
                                                                 </Table.ColumnHeader>
                                                                 <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
                                                                     สีภายนอก
@@ -1039,6 +1196,73 @@ function MainPage() {
                                                                                 <MenuItem value="WallwithInsulation">ผนังมีฉนวนตรงกลาง</MenuItem>
                                                                                 <MenuItem value="Prefabricated">ผนังสำเร็จรูป</MenuItem>
                                                                                 <MenuItem value="Glass">กระจก</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
+
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                disabled={item.material !== "Glass"}
+                                                                                value={item.glassType}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value;
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.wallValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            glassType: newValue,
+                                                                                        };
+                                                                                        return { ...prev, wallValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={"SingleGlazing"}>กระจกใสธรรมดา</MenuItem>
+                                                                                <MenuItem value={"Tinted"}>กระจกสี</MenuItem>
+                                                                                <MenuItem value={"Low-E"}>กระจก Low-E</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
+
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                disabled={item.material !== "Glass"}
+                                                                                value={item.haveShade}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value === "true";
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.wallValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            haveShade: newValue,
+                                                                                        };
+                                                                                        return { ...prev, wallValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={"true"}>มี</MenuItem>
+                                                                                <MenuItem value={"false"}>ไม่มี</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
+
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                disabled={item.material !== "Glass"}
+                                                                                value={item.haveCurtain}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value === "true";
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.wallValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            haveCurtain: newValue,
+                                                                                        };
+                                                                                        return { ...prev, wallValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={"true"}>มี</MenuItem>
+                                                                                <MenuItem value={"false"}>ไม่มี</MenuItem>
                                                                             </Select>
                                                                         </Table.Cell>
 
@@ -1213,7 +1437,7 @@ function MainPage() {
                                                         {directions.map((item, index) => (
                                                             <MenuItem
                                                                 key={index}
-                                                                value={item.label}
+                                                                value={item.value}
                                                             >
                                                                 {item.label}
                                                             </MenuItem>
@@ -1237,6 +1461,9 @@ function MainPage() {
                                                             </Table.ColumnHeader>
                                                             <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
                                                                 วัสดุ
+                                                            </Table.ColumnHeader>
+                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                ชนิดกระจก
                                                             </Table.ColumnHeader>
                                                             <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
                                                                 กันสาด
@@ -1299,6 +1526,29 @@ function MainPage() {
                                                                         >
                                                                             <MenuItem value={"Glass"}>กระจก</MenuItem>
                                                                             <MenuItem value={"Other"}>อื่น ๆ</MenuItem>
+                                                                        </Select>
+                                                                    </Table.Cell>
+
+                                                                    <Table.Cell>
+                                                                        <Select
+                                                                            sx={{ width: '100%' }}
+                                                                            disabled={item.material !== "Glass"}
+                                                                            value={item.glassType}
+                                                                            onChange={(e) => {
+                                                                                const newValue = e.target.value;
+                                                                                setFormData((prev) => {
+                                                                                    const updated = [...prev.doorValue];
+                                                                                    updated[index] = {
+                                                                                        ...updated[index],
+                                                                                        glassType: newValue,
+                                                                                    };
+                                                                                    return { ...prev, doorValue: updated };
+                                                                                });
+                                                                            }}
+                                                                        >
+                                                                            <MenuItem value={"SingleGlazing"}>กระจกใสธรรมดา</MenuItem>
+                                                                            <MenuItem value={"Tinted"}>กระจกสี</MenuItem>
+                                                                            <MenuItem value={"Low-E"}>กระจก Low-E</MenuItem>
                                                                         </Select>
                                                                     </Table.Cell>
 
@@ -1398,7 +1648,7 @@ function MainPage() {
                                                         {directions.map((item, index) => (
                                                             <MenuItem
                                                                 key={index}
-                                                                value={item.label}
+                                                                value={item.value}
                                                             >
                                                                 {item.label}
                                                             </MenuItem>
@@ -1422,6 +1672,9 @@ function MainPage() {
                                                             </Table.ColumnHeader>
                                                             <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
                                                                 วัสดุ
+                                                            </Table.ColumnHeader>
+                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                ชนิดกระจก
                                                             </Table.ColumnHeader>
                                                             <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
                                                                 กันสาด
@@ -1484,6 +1737,29 @@ function MainPage() {
                                                                         >
                                                                             <MenuItem value={"Glass"}>กระจก</MenuItem>
                                                                             <MenuItem value={"Other"}>อื่น ๆ</MenuItem>
+                                                                        </Select>
+                                                                    </Table.Cell>
+
+                                                                    <Table.Cell>
+                                                                        <Select
+                                                                            sx={{ width: '100%' }}
+                                                                            disabled={item.material !== "Glass"}
+                                                                            value={item.glassType}
+                                                                            onChange={(e) => {
+                                                                                const newValue = e.target.value;
+                                                                                setFormData((prev) => {
+                                                                                    const updated = [...prev.windowValue];
+                                                                                    updated[index] = {
+                                                                                        ...updated[index],
+                                                                                        glassType: newValue,
+                                                                                    };
+                                                                                    return { ...prev, windowValue: updated };
+                                                                                });
+                                                                            }}
+                                                                        >
+                                                                            <MenuItem value={"SingleGlazing"}>กระจกใสธรรมดา</MenuItem>
+                                                                            <MenuItem value={"Tinted"}>กระจกสี</MenuItem>
+                                                                            <MenuItem value={"Low-E"}>กระจก Low-E</MenuItem>
                                                                         </Select>
                                                                     </Table.Cell>
 
