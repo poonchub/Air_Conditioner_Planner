@@ -2,7 +2,7 @@ import { Box, Button, Collapsible, Container, createListCollection, Field, Flex,
 import { useEffect, useState } from "react";
 import "./MainPage.css";
 import { AirVent, FileText, Home, MapPin } from "lucide-react";
-import { Chip, Collapse, FormControl, MenuItem, OutlinedInput, Select, TextField, Zoom, type SelectChangeEvent } from "@mui/material";
+import { Chip, Collapse, FormControl, MenuItem, OutlinedInput, Select, TextField, type SelectChangeEvent } from "@mui/material";
 import BuildingSelector from "@/components/BuildingSelector/BuildingSelector";
 import AirConditionerSelector from "@/components/AirConditionerSelector/AirConditionerSelector";
 import { findMaximumLightingPowerDensity, loadWattLightData } from "@/data/WattLightService";
@@ -31,8 +31,15 @@ import { findGlassCLFwithShadingTimeRange, loadGlassCLFwithShadingData } from "@
 import { findGlassCLFnoShadingTimeRange, loadGlassCLFnoShadingData } from "@/data/GlassCLFnoShadingService";
 import type { SHGFtoShadeRow } from "@/types/SHGFtoShadeRow";
 import type { SHGFNoShadeRow } from "@/types/SHGFNoShadeRow";
+// @ts-ignore
 import { findSHGFNoShade, interpolateSHGFNoShadeByLat, loadSHGFNoShadeData } from "@/data/SHGFNoShadeService";
 import { findSHGFtoShade, loadSHGFtoShadeData } from "@/data/SHGFtoShadeService";
+import { findUCLTDWallTimeRange, findUvalueWall, loadUCLTDWallData } from "@/data/UCLTDWallService";
+import type { UCLTDWallRow } from "@/types/UCLTDWallRow";
+import type { GlassCLTDRow } from "@/types/GlassCLTDRow";
+import { findCLTDGlassTimeRange, loadCLTDGlassData } from "@/data/CLTDService";
+import { findU_SCglass, loadU_SCglassData } from "@/data/U_SCglassService";
+import type { U_SCglassRow } from "@/types/U_SCglassRow";
 
 export const BASE_URL = import.meta.env.BASE_URL
 
@@ -79,10 +86,17 @@ type WallValue = {
     material: string;
     kWallColor: number;
     wallArea: number;
-    glassArea: number;
+    glassAreaWindow: number;
+    glassAreaDoor: number;
     haveShade: boolean;
     haveCurtain: boolean;
     glassType: string;
+}
+
+type NoAirDirectionValue = {
+    directionName: string;
+    position: string;
+    material: string;
 }
 
 type FormDataProps = {
@@ -94,10 +108,12 @@ type FormDataProps = {
     startTime: string;
     endTime: string;
     ceiling: string;
+    buildingType: string;
     roomPosition: string;
     roofType: string;
     kRoofColor: number;
     ballastFactor: number;
+    noAirDirectionValue: NoAirDirectionValue[];
     equipmentValue: EquipmentValue[];
     doorValue: DoorValue[];
     windowValue: WindowValue[];
@@ -133,10 +149,12 @@ function MainPage() {
         startTime: "",
         endTime: "",
         ceiling: "",
+        buildingType: "",
         roomPosition: "",
         roofType: "",
         kRoofColor: 0,
         ballastFactor: 1,
+        noAirDirectionValue: [],
         equipmentValue: [],
         doorValue: [],
         windowValue: [],
@@ -161,7 +179,7 @@ function MainPage() {
         equipment: null
     })
 
-    const [tabValue, setTabValue] = useState("one");
+    const [tabValue, setTabValue] = useState("two");
 
     const [wattLightData, setWattLightData] = useState<WattLightRow[]>([]);
     const [occupancyHeatGainData, setOccupancyHeatGainData] = useState<OccupancyHeatGainRow[]>([])
@@ -175,6 +193,9 @@ function MainPage() {
     const [glassCLFnoShadingData, setGlassCLFnoShading] = useState<GlassCLFnoShadingRow[]>([])
     const [SHGFtoShadeData, setSHGFtoShadeData] = useState<SHGFtoShadeRow[]>([])
     const [SHGFNoShadeData, setSHGFNoShadeData] = useState<SHGFNoShadeRow[]>([])
+    const [UCLTDWallData, setUCLTDWallData] = useState<UCLTDWallRow[]>([])
+    const [CLTDGlassData, setCLTDGlassData] = useState<GlassCLTDRow[]>([])
+    const [U_SCglassData, setU_SCglassData] = useState<U_SCglassRow[]>([])
 
     const handleDoorDirectionChange = (event: SelectChangeEvent<string[]>) => {
         const {
@@ -183,12 +204,12 @@ function MainPage() {
 
         setFormData((prev) => {
             const directionArr = typeof value === 'string' ? value.split(',') : value
-            if (directionArr.includes("ไม่มี")) {
+            if (directionArr.includes("None")) {
                 return {
                     ...prev,
                     doorValue: [
                         {
-                            directionName: "ไม่มี",
+                            directionName: "None",
                             doorType: "",
                             material: "",
                             haveShade: false,
@@ -239,12 +260,12 @@ function MainPage() {
         setFormData((prev) => {
             const directionArr = typeof value === 'string' ? value.split(',') : value
 
-            if (directionArr.includes("ไม่มี")) {
+            if (directionArr.includes("None")) {
                 return {
                     ...prev,
                     windowValue: [
                         {
-                            directionName: "ไม่มี",
+                            directionName: "None",
                             windowType: "",
                             material: "",
                             haveShade: false,
@@ -293,17 +314,18 @@ function MainPage() {
         setFormData((prev) => {
             const directionArr = typeof value === 'string' ? value.split(',') : value
 
-            if (directionArr.includes("ไม่มี")) {
+            if (directionArr.includes("None")) {
                 return {
                     ...prev,
                     wallValue: [
                         {
-                            directionName: "ไม่มี",
+                            directionName: "None",
                             position: "",
                             material: "",
                             kWallColor: 0,
                             wallArea: 0,
-                            glassArea: 0,
+                            glassAreaWindow: 0,
+                            glassAreaDoor: 0,
                             haveShade: false,
                             haveCurtain: false,
                             glassType: ""
@@ -325,7 +347,8 @@ function MainPage() {
                         material: "",
                         kWallColor: 0.65,
                         wallArea: 0,
-                        glassArea: 0,
+                        glassAreaWindow: 0,
+                        glassAreaDoor: 0,
                         haveShade: false,
                         haveCurtain: false,
                         glassType: ""
@@ -338,6 +361,51 @@ function MainPage() {
             return {
                 ...prev,
                 wallValue: filteredWalls
+            };
+        });
+    };
+
+    const handleNoAirDirectionChange = (event: SelectChangeEvent<string[]>) => {
+        const {
+            target: { value },
+        } = event;
+
+        setFormData((prev) => {
+            const directionArr = typeof value === 'string' ? value.split(',') : value
+
+            if (directionArr.includes("None")) {
+                return {
+                    ...prev,
+                    noAirDirectionValue: [
+                        {
+                            directionName: "None",
+                            position: "",
+                            material: ""
+                        },
+                    ],
+                };
+            }
+
+            const prevDirections = prev.noAirDirectionValue || [];
+            const newDirections: NoAirDirectionValue[] = [...prevDirections];
+
+
+            directionArr?.forEach((dir) => {
+                const exists = newDirections.find(d => d.directionName === dir);
+                if (!exists) {
+                    newDirections.push({
+                        directionName: dir,
+                        position: "",
+                        material: ""
+                    });
+                }
+            });
+
+            const filteredDirections = newDirections.filter(d => directionArr?.includes(d.directionName));
+
+            return {
+                ...prev,
+                noAirDirectionValue: filteredDirections
             };
         });
     };
@@ -355,6 +423,9 @@ function MainPage() {
         loadGlassCLFnoShadingData().then(setGlassCLFnoShading)
         loadSHGFNoShadeData().then(setSHGFNoShadeData)
         loadSHGFtoShadeData().then(setSHGFtoShadeData)
+        loadUCLTDWallData().then(setUCLTDWallData)
+        loadCLTDGlassData().then(setCLTDGlassData)
+        loadU_SCglassData().then(setU_SCglassData)
     }, []);
 
     useEffect(() => {
@@ -548,37 +619,35 @@ function MainPage() {
                     totalWallArea = formData.depth * formData.height
                 }
 
-                let glassArea = 0;
-                if (wall.material === "Glass") {
-                    glassArea = totalWallArea
-                } else {
-                    // คำนวณพื้นที่ประตูที่เป็นกระจก
-                    matchedDoors.forEach((door) => {
-                        if (door.material === "Glass") {
-                            const doorArea = getDoorTypeData(
-                                doorTypeData,
-                                door.doorType
-                            )
-                            glassArea += Number(doorArea?.DoorArea) * door.quantity;
-                        }
-                    });
+                // คำนวณพื้นที่ประตูที่เป็นกระจก
+                let glassAreaDoor = 0
+                matchedDoors.forEach((door) => {
+                    if (door.material === "Glass") {
+                        const doorArea = getDoorTypeData(
+                            doorTypeData,
+                            door.doorType
+                        )
+                        glassAreaDoor += Number(doorArea?.DoorArea) * door.quantity;
+                    }
+                });
 
-                    // คำนวณพื้นที่หน้าต่างที่เป็นกระจก
-                    matchedWindows.forEach((win) => {
-                        if (win.material === "Glass") {
-                            const windowArea = getWindowTypeData(
-                                windowTypeData,
-                                win.windowType
-                            );
-                            glassArea += Number(windowArea?.WindowArea) * win.quantity;
-                        }
-                    });
-                }
+                // คำนวณพื้นที่หน้าต่างที่เป็นกระจก
+                let glassAreaWindow = 0
+                matchedWindows.forEach((win) => {
+                    if (win.material === "Glass") {
+                        const windowArea = getWindowTypeData(
+                            windowTypeData,
+                            win.windowType
+                        );
+                        glassAreaWindow += Number(windowArea?.WindowArea) * win.quantity;
+                    }
+                });
 
                 return {
                     ...wall,
-                    glassArea,
-                    wallArea: totalWallArea - glassArea,
+                    wallArea: totalWallArea - (glassAreaDoor + glassAreaWindow),
+                    glassAreaWindow,
+                    glassAreaDoor
                 };
             });
 
@@ -586,6 +655,7 @@ function MainPage() {
         });
     }, [formData.doorValue, formData.windowValue, formData.width, formData.depth, formData.height]);
 
+    // qRoof
     useEffect(() => {
         if (
             formData.roofType != "" &&
@@ -668,122 +738,176 @@ function MainPage() {
         ]
     )
 
+    // qWall
     useEffect(() => {
         if (
+            formData.windowValue &&
+            formData.doorValue &&
             formData.wallValue &&
             formData.startTime != "" &&
             formData.endTime != "" &&
-            formData.province != ""
+            formData.province != "" &&
+            formData.width != 0 &&
+            formData.depth != 0
         ) {
-            const wallGlass = formData.wallValue.filter((wall) => wall.material === "Glass")
-            console.log("wallGlass", wallGlass)
+            formData.wallValue.map((item) => {
+                if (item.material !== "Glass") {
+                    const ucltWallData = findUCLTDWallTimeRange(
+                        UCLTDWallData,
+                        item.material,
+                        item.directionName,
+                        formData.startTime,
+                        formData.endTime
+                    )
 
-            const selectedWallGlass = getSelectedWallGlass(wallGlass);
-            console.log("selectedWallGlass", selectedWallGlass);
+                    // console.log("ucltWallData: ", ucltWallData)
 
-            let CLFGlassData = []
-            let SHGFGlassDataAllMonth = []
+                    const climatedt = getClimateData(
+                        climateData,
+                        formData.province
+                    )
+                    // console.log(`climatedt: `, climatedt)
+                    const interpolated = interpolateLMByLat(lmWallAndRoofData, Number(climatedt?.Latitude))
+                    const interpolatedDirection = interpolated.filter((d) => d.Direction === item.directionName)
+                    // console.log(`interpolated ${climatedt?.Latitude}: `, interpolated)
+                    // console.log(`interpolatedDirection ${climatedt?.Latitude}: `, interpolatedDirection)
 
-            const climatedt = getClimateData(
-                climateData,
-                formData.province
-            )
-            if (selectedWallGlass?.haveShade) {
-                SHGFGlassDataAllMonth = findSHGFtoShade(
-                    SHGFtoShadeData,
-                    selectedWallGlass.directionName,
-                )
-            } else {
-                SHGFGlassDataAllMonth = interpolateSHGFNoShadeByLat(
-                    SHGFNoShadeData,
-                    Number(climatedt?.Latitude)
-                )
-            }
-            console.log("SHGFGlassDataAllMonth: ", SHGFGlassDataAllMonth)
+                    const uValueWall = findUvalueWall(
+                        ucltWallData,
+                        item.material,
+                    )
+                    // console.log("uValueWall: ", uValueWall)
 
-            const monthsInRange = ["Apr", "May", "Jun", "Jul", "Aug"];
-            const filteredSHGFGlassData = SHGFGlassDataAllMonth.filter(
-                (item) => monthsInRange.includes(item.Month)
-            );
+                    const wallArea = item.wallArea
 
-            console.log("filteredSHGFGlassData: ", filteredSHGFGlassData)
+                    const cltdByMonth = interpolatedDirection.map((lmRow) => {
+                        const month = lmRow.Month;
 
-            if (selectedWallGlass?.haveCurtain) {
-                CLFGlassData = findGlassCLFwithShadingTimeRange(
-                    glassCLFwithShadingData,
-                    selectedWallGlass.directionName,
-                    formData.startTime,
-                    formData.endTime
-                )
-            } else {
-                CLFGlassData = findGlassCLFnoShadingTimeRange(
-                    glassCLFnoShadingData,
-                    selectedWallGlass?.directionName ?? "",
-                    formData.startTime,
-                    formData.endTime
-                )
-            }
-            console.log("CLFGlassData: ", CLFGlassData)
+                        // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
+                        const CLTDTime = ucltWallData.map((ucltRow) => {
+                            const CLTDs = (
+                                (item.kWallColor * (Number(ucltRow.CLTDWall) + Number(lmRow.LM))) +
+                                (25.5 - Number(climatedt?.DB_In)) +
+                                (Number(climatedt?.T_o) - 29.4)
+                            )
 
-            // const qGlassByMonth = filteredSHGFGlassData.map((shgfRow) => {
-            //     const month = shgfRow.Month;
+                            const qWall = CLTDs * Number(uValueWall) * wallArea
 
-            //     // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
-            //     const CLFGTime = CLFGlassData.map((clfgRow) => {
-            //         const CLTDs = (
-                        
-            //         )
+                            return (
+                                {
+                                    Hour: ucltRow.Hour,
+                                    qWall: (qWall),
+                                }
+                            )
+                        });
 
-            //         const qRoof = CLTDs * Number(uValueRoof) * roofArea
+                        return {
+                            Month: month,
+                            CLTDTime,
+                        };
+                    });
 
-            //         return (
-            //             {
-            //                 Hour: clfgRow.Hour,
-            //                 qGlass: (qRoof),
-            //             }
-            //         )
-            //     });
-
-            //     return {
-            //         Month: month,
-            //         CLFGTime,
-            //     };
-            // });
-
-            // console.log("qGlassByMonth: ", qGlassByMonth);
+                    // console.log("cltdByMonth: ", cltdByMonth);
+                }
+            })
         }
     },
         [
+            formData.windowValue,
+            formData.doorValue,
             formData.wallValue,
             formData.startTime,
             formData.endTime,
-            formData.province
+            formData.province,
+            formData.width,
+            formData.depth
         ]
     )
 
-    function getSelectedWallGlass(wallGlass: typeof formData.wallValue): typeof formData.wallValue[number] | undefined {
-        if (!wallGlass || wallGlass.length === 0) return undefined;
+    // gWallGlass
+    useEffect(() => {
+        if (
+            formData.windowValue &&
+            formData.doorValue &&
+            formData.wallValue &&
+            formData.startTime != "" &&
+            formData.endTime != "" &&
+            formData.province != "" &&
+            formData.width != 0 &&
+            formData.depth != 0
+        ) {
+            formData.wallValue.map((item) => {
+                if (item.material === "Glass") {
+                    const cltdGlassData = findCLTDGlassTimeRange(
+                        CLTDGlassData,
+                        formData.startTime,
+                        formData.endTime
+                    )
 
-        const directionPriority: Record<string, number> = {
-            "W": 1,
-            "NW": 2,
-            "E": 3,
-            "NE": 4,
-            "SW": 5,
-            "SE": 6,
-            "N": 7,
-            "S": 8,
-        };
+                    console.log("cltdGlassData: ", cltdGlassData)
 
-        return [...wallGlass]
-            .sort((a, b) => {
-                if (b.glassArea !== a.glassArea) {
-                    return b.glassArea - a.glassArea; // glassArea มากสุดมาก่อน
+                    const climatedt = getClimateData(
+                        climateData,
+                        formData.province
+                    )
+                    console.log(`climatedt: `, climatedt)
+
+                    const interpolated = interpolateLMByLat(lmWallAndRoofData, Number(climatedt?.Latitude))
+                    const interpolatedDirection = interpolated.filter((d) => d.Direction === item.directionName)
+                    console.log(`interpolated ${climatedt?.Latitude}: `, interpolated)
+                    console.log(`interpolatedDirection ${climatedt?.Latitude}: `, interpolatedDirection)
+
+                    const uValueGlass = findU_SCglass(
+                        U_SCglassData,
+                        item.glassType,
+                    )
+                    console.log(`uValueGlass: `, uValueGlass?.Uglass)
+
+                    const wallArea = item.wallArea
+
+                    const cltdWallGlassByMonth = interpolatedDirection.map((lmRow) => {
+                        const month = lmRow.Month;
+
+                        // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
+                        const CLTDTime = cltdGlassData.map((ucltRow) => {
+                            const CLTDs = (
+                                Number(ucltRow.CLTD) +
+                                (25.5 - Number(climatedt?.DB_In)) +
+                                (Number(climatedt?.T_o) - 29.4)
+                            )
+
+                            const qWallGlass = CLTDs * Number(uValueGlass?.Uglass) * wallArea
+
+                            return (
+                                {
+                                    Hour: ucltRow.Hour,
+                                    qWallGlass: qWallGlass,
+                                }
+                            )
+                        });
+
+                        return {
+                            Month: month,
+                            CLTDTime,
+                        };
+                    });
+
+                    console.log("cltdWallGlassByMonth: ", cltdWallGlassByMonth);
                 }
-                return directionPriority[a.directionName] - directionPriority[b.directionName]; // ถ้าเท่ากันใช้ทิศ
-            })[0];
-    }
-
+            })
+        }
+    },
+        [
+            formData.windowValue,
+            formData.doorValue,
+            formData.wallValue,
+            formData.startTime,
+            formData.endTime,
+            formData.province,
+            formData.width,
+            formData.depth
+        ]
+    )
 
     // console.log("doorValue: ", formData.doorValue)
     // console.log("windowValue: ", formData.windowValue)
@@ -828,9 +952,22 @@ function MainPage() {
         { label: "ทิศตะวันตกเฉียงใต้ (SW)", value: "SW" },
         { label: "ทิศตะวันตก (W)", value: "W" },
         { label: "ทิศตะวันตกเฉียงเหนือ (NW)", value: "NW" },
-        { label: "ไม่มี", value: "NONE" },
+        { label: "ไม่มี", value: "None" },
     ];
 
+    const roomSides = [
+        { label: "ทิศเหนือ (N)", value: "N" },
+        { label: "ทิศตะวันออกเฉียงเหนือ (NE)", value: "NE" },
+        { label: "ทิศตะวันออก (E)", value: "E" },
+        { label: "ทิศตะวันออกเฉียงใต้ (SE)", value: "SE" },
+        { label: "ทิศใต้ (S)", value: "S" },
+        { label: "ทิศตะวันตกเฉียงใต้ (SW)", value: "SW" },
+        { label: "ทิศตะวันตก (W)", value: "W" },
+        { label: "ทิศตะวันตกเฉียงเหนือ (NW)", value: "NW" },
+        { label: "ด้านบน (เพดาน)", value: "Top" },
+        { label: "ด้านล่าง (พื้น)", value: "Bottom" },
+        { label: "ไม่มี", value: "None" },
+    ];
 
     // @ts-ignore
     const hourOptions = Array.from({ length: 24 }, (_, i) => {
@@ -985,6 +1122,7 @@ function MainPage() {
                                                         <Table.Row>
                                                             <Table.Cell>
                                                                 <TextField
+                                                                    fullWidth
                                                                     type="number"
                                                                     value={formData.width}
                                                                     onChange={(e) => setFormData((prev) => ({ ...prev, width: Number(e.target.value) }))}
@@ -992,6 +1130,7 @@ function MainPage() {
                                                             </Table.Cell>
                                                             <Table.Cell>
                                                                 <TextField
+                                                                    fullWidth
                                                                     type="number"
                                                                     value={formData.depth}
                                                                     onChange={(e) => setFormData((prev) => ({ ...prev, depth: Number(e.target.value) }))}
@@ -999,6 +1138,7 @@ function MainPage() {
                                                             </Table.Cell>
                                                             <Table.Cell>
                                                                 <TextField
+                                                                    fullWidth
                                                                     type="number"
                                                                     value={formData.height}
                                                                     onChange={(e) => setFormData((prev) => ({ ...prev, height: Number(e.target.value) }))}
@@ -1070,18 +1210,36 @@ function MainPage() {
 
                                         <GridItem colSpan={1}>
                                             <Field.Root>
-                                                <Field.Label>ตำแหน่งห้อง</Field.Label>
+                                                <Field.Label>ประเภทอาคาร</Field.Label>
                                                 <FormControl fullWidth>
                                                     <Select
-                                                        value={formData.roomPosition}
-                                                        onChange={(e) => setFormData((prev) => ({ ...prev, roomPosition: e.target.value }))}
+                                                        value={formData.buildingType}
+                                                        onChange={(e) => setFormData((prev) => ({ ...prev, buildingType: e.target.value }))}
                                                     >
-                                                        <MenuItem value={"Top"}>ชั้นบนสุด/อาคารชั้นเดียว (ใต้หลังคา)</MenuItem>
-                                                        <MenuItem value={"Other"}>ชั้นอื่น ๆ</MenuItem>
+                                                        <MenuItem value={"Single"}>อาคารชั้นเดียว</MenuItem>
+                                                        <MenuItem value={"Multi"}>อาคารหลายชั้น</MenuItem>
                                                     </Select>
                                                 </FormControl>
                                             </Field.Root>
                                         </GridItem>
+
+                                        <Collapse in={formData.buildingType === "Single"} timeout={400} unmountOnExit>
+                                            <GridItem colSpan={1}>
+                                                <Field.Root>
+                                                    <Field.Label>ตำแหน่งห้อง</Field.Label>
+                                                    <FormControl fullWidth>
+                                                        <Select
+                                                            value={formData.roomPosition}
+                                                            onChange={(e) => setFormData((prev) => ({ ...prev, roomPosition: e.target.value }))}
+                                                        >
+                                                            <MenuItem value="Top">ชั้นบนสุด</MenuItem>
+                                                            <MenuItem value="Middle">ระหว่างชั้น</MenuItem>
+                                                            <MenuItem value="Bottom">ชั้นล่างสุด</MenuItem>
+                                                        </Select>
+                                                    </FormControl>
+                                                </Field.Root>
+                                            </GridItem>
+                                        </Collapse>
                                     </Grid>
                                 </GridItem>
 
@@ -1119,7 +1277,7 @@ function MainPage() {
                                             </Field.Root>
                                         </GridItem>
 
-                                        <Collapse in={(formData.wallValue.length > 0)} timeout={400} unmountOnExit>
+                                        <Collapse in={(formData.wallValue.length > 0) && (formData.wallValue[0].directionName !== "None")} timeout={400} unmountOnExit>
                                             <GridItem>
                                                 <Field.Root>
                                                     <Field.Label>ระบุข้อมูลผนัง</Field.Label>
@@ -1153,7 +1311,7 @@ function MainPage() {
                                                             {formData.wallValue.map((item, index) => {
                                                                 return (
                                                                     <Table.Row key={index}>
-                                                                        <Table.Cell textAlign={"center"}>{item.directionName}</Table.Cell>
+                                                                        <Table.Cell textAlign={"center"}>{directions.find((d) => d.value === item.directionName)?.label}</Table.Cell>
 
                                                                         <Table.Cell>
                                                                             <Select
@@ -1297,8 +1455,208 @@ function MainPage() {
                                     </Grid>
                                 </GridItem>
 
+                                {/* NoAirDirection */}
+                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
+                                    <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
+                                        <GridItem>
+                                            <Field.Root>
+                                                <Field.Label>สภาพแวดล้อมรอบห้อง</Field.Label>
+                                                <Field.Label>ระบุด้านของห้องที่ไม่ได้ติดตั้งเครื่องปรับอากาศ (เฉพาะผนังที่ติดกับห้องอื่น และเลือกได้มากกว่า1)</Field.Label>
+                                                <FormControl sx={{ width: "100%" }}>
+                                                    <Select
+                                                        multiple
+                                                        value={formData.noAirDirectionValue.map(d => d.directionName)}
+                                                        onChange={handleNoAirDirectionChange}
+                                                        input={<OutlinedInput />}
+                                                        renderValue={(selected) => (
+                                                            <Box display={'flex'} flexWrap={'wrap'} gap={0.5}>
+                                                                {selected?.map((value) => (
+                                                                    <Chip key={value} label={value} />
+                                                                ))}
+                                                            </Box>
+                                                        )}
+                                                    >
+                                                        {roomSides.map((item, index) => (
+                                                            <MenuItem
+                                                                key={index}
+                                                                value={item.value}
+                                                            >
+                                                                {item.label}
+                                                            </MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                            </Field.Root>
+                                        </GridItem>
+
+                                        <Collapse in={(formData.noAirDirectionValue.length > 0) && (formData.noAirDirectionValue[0].directionName !== "None")} timeout={400} unmountOnExit>
+                                            <GridItem>
+                                                <Field.Root>
+                                                    <Field.Label>ระบุข้อมูลผนัง</Field.Label>
+                                                    <Table.Root size="sm" variant={"outline"}>
+                                                        <Table.Header>
+                                                            <Table.Row>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ทิศทาง
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ตำแหน่ง
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    วัสดุ
+                                                                </Table.ColumnHeader>
+                                                            </Table.Row>
+                                                        </Table.Header>
+                                                        <Table.Body>
+                                                            {formData.noAirDirectionValue.map((item, index) => {
+                                                                return (
+                                                                    <Table.Row key={index}>
+                                                                        <Table.Cell textAlign={"center"}>{directions.find((d) => d.value === item.directionName)?.label}</Table.Cell>
+
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                value={item.position ?? ''}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value;
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.wallValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            position: newValue,
+                                                                                        };
+                                                                                        return { ...prev, wallValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value="Width">ด้านกว้าง</MenuItem>
+                                                                                <MenuItem value="Depth">ด้านยาว</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
+
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                value={item.material}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value;
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.wallValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            material: newValue,
+                                                                                        };
+                                                                                        return { ...prev, wallValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value="BrickPlaster">ผนังอิฐฉาบปูน</MenuItem>
+                                                                                <MenuItem value="WallwithInsulation">ผนังมีฉนวนตรงกลาง</MenuItem>
+                                                                                <MenuItem value="Prefabricated">ผนังสำเร็จรูป</MenuItem>
+                                                                                <MenuItem value="Glass">กระจก</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
+
+                                                                        <Table.Cell>
+                                                                            {/* <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                disabled={item.material !== "Glass"}
+                                                                                value={item.glassType}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value;
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.wallValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            glassType: newValue,
+                                                                                        };
+                                                                                        return { ...prev, wallValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={"SingleGlazing"}>กระจกใสธรรมดา</MenuItem>
+                                                                                <MenuItem value={"Tinted"}>กระจกสี</MenuItem>
+                                                                                <MenuItem value={"Low-E"}>กระจก Low-E</MenuItem>
+                                                                            </Select> */}
+                                                                        </Table.Cell>
+
+                                                                        <Table.Cell>
+                                                                            {/* <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                disabled={item.material !== "Glass"}
+                                                                                value={item.haveShade}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value === "true";
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.wallValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            haveShade: newValue,
+                                                                                        };
+                                                                                        return { ...prev, wallValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={"true"}>มี</MenuItem>
+                                                                                <MenuItem value={"false"}>ไม่มี</MenuItem>
+                                                                            </Select> */}
+                                                                        </Table.Cell>
+
+                                                                        <Table.Cell>
+                                                                            {/* <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                disabled={item.material !== "Glass"}
+                                                                                value={item.haveCurtain}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value === "true";
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.wallValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            haveCurtain: newValue,
+                                                                                        };
+                                                                                        return { ...prev, wallValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={"true"}>มี</MenuItem>
+                                                                                <MenuItem value={"false"}>ไม่มี</MenuItem>
+                                                                            </Select> */}
+                                                                        </Table.Cell>
+
+                                                                        <Table.Cell>
+                                                                            {/* <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                value={item.kWallColor}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = Number(e.target.value);
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.wallValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            kWallColor: newValue,
+                                                                                        };
+                                                                                        return { ...prev, wallValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={0.65}>สีสว่าง</MenuItem>
+                                                                                <MenuItem value={1}>สีเข้ม</MenuItem>
+                                                                            </Select> */}
+                                                                        </Table.Cell>
+                                                                    </Table.Row>
+                                                                );
+                                                            })}
+                                                        </Table.Body>
+                                                    </Table.Root>
+                                                </Field.Root>
+                                            </GridItem>
+                                        </Collapse>
+                                    </Grid>
+                                </GridItem>
+
                                 {/* Roof */}
-                                <Zoom in={formData.roomPosition === "Top"} timeout={400} unmountOnExit>
+                                <Collapse in={formData.roomPosition === "Top"} timeout={400} unmountOnExit>
                                     <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} height={"100%"}>
                                         <Grid
                                             gap={5}
@@ -1350,8 +1708,7 @@ function MainPage() {
                                             </GridItem>
                                         </Grid>
                                     </GridItem>
-                                </Zoom>
-
+                                </Collapse>
 
                                 {/* Floor */}
                                 {/* {formData.locationAreaId[0] === "3" || formData.buildingTypeId[0] === "1" && (
@@ -1447,180 +1804,182 @@ function MainPage() {
                                             </Field.Root>
                                         </GridItem>
 
-                                        <GridItem>
-                                            <Field.Root>
-                                                <Field.Label>ระบุข้อมูลประตู</Field.Label>
-                                                <Table.Root size="sm" variant={"outline"}>
-                                                    <Table.Header>
-                                                        <Table.Row>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                ทิศทาง
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                ประเภท
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                วัสดุ
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                ชนิดกระจก
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                กันสาด
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                ม่านบังแดด
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                จำนวน
-                                                            </Table.ColumnHeader>
-                                                        </Table.Row>
-                                                    </Table.Header>
-                                                    <Table.Body>
-                                                        {formData.doorValue.map((item, index) => {
-                                                            return (
-                                                                <Table.Row key={index}>
-                                                                    <Table.Cell textAlign={"center"}>{item.directionName}</Table.Cell>
+                                        <Collapse in={(formData.doorValue.length > 0) && (formData.doorValue[0].directionName !== "None")} timeout={400} unmountOnExit>
+                                            <GridItem>
+                                                <Field.Root>
+                                                    <Field.Label>ระบุข้อมูลประตู</Field.Label>
+                                                    <Table.Root size="sm" variant={"outline"}>
+                                                        <Table.Header>
+                                                            <Table.Row>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ทิศทาง
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ประเภท
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    วัสดุ
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ชนิดกระจก
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    กันสาด
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ม่านบังแดด
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    จำนวน
+                                                                </Table.ColumnHeader>
+                                                            </Table.Row>
+                                                        </Table.Header>
+                                                        <Table.Body>
+                                                            {formData.doorValue.map((item, index) => {
+                                                                return (
+                                                                    <Table.Row key={index}>
+                                                                        <Table.Cell textAlign={"center"}>{directions.find((d) => d.value === item.directionName)?.label}</Table.Cell>
 
-                                                                    <Table.Cell>
-                                                                        <Select
-                                                                            sx={{ width: '100%' }}
-                                                                            value={item.doorType ?? ''}
-                                                                            onChange={(e) => {
-                                                                                const newValue = e.target.value;
-                                                                                setFormData((prev) => {
-                                                                                    const updated = [...prev.doorValue];
-                                                                                    updated[index] = {
-                                                                                        ...updated[index],
-                                                                                        doorType: newValue,
-                                                                                    };
-                                                                                    return { ...prev, doorValue: updated };
-                                                                                });
-                                                                            }}
-                                                                        >
-                                                                            {
-                                                                                doorTypeData.map((doortype, index) => {
-                                                                                    return (
-                                                                                        <MenuItem key={index} value={doortype.DoorType}>{doorTypeLabelMap[doortype.DoorType]}</MenuItem>
-                                                                                    )
-                                                                                })
-                                                                            }
-                                                                        </Select>
-                                                                    </Table.Cell>
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                value={item.doorType ?? ''}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value;
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.doorValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            doorType: newValue,
+                                                                                        };
+                                                                                        return { ...prev, doorValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                {
+                                                                                    doorTypeData.map((doortype, index) => {
+                                                                                        return (
+                                                                                            <MenuItem key={index} value={doortype.DoorType}>{doorTypeLabelMap[doortype.DoorType]}</MenuItem>
+                                                                                        )
+                                                                                    })
+                                                                                }
+                                                                            </Select>
+                                                                        </Table.Cell>
 
-                                                                    <Table.Cell>
-                                                                        <Select
-                                                                            sx={{ width: '100%' }}
-                                                                            value={item.material}
-                                                                            onChange={(e) => {
-                                                                                const newValue = e.target.value;
-                                                                                setFormData((prev) => {
-                                                                                    const updated = [...prev.doorValue];
-                                                                                    updated[index] = {
-                                                                                        ...updated[index],
-                                                                                        material: newValue,
-                                                                                    };
-                                                                                    return { ...prev, doorValue: updated };
-                                                                                });
-                                                                            }}
-                                                                        >
-                                                                            <MenuItem value={"Glass"}>กระจก</MenuItem>
-                                                                            <MenuItem value={"Other"}>อื่น ๆ</MenuItem>
-                                                                        </Select>
-                                                                    </Table.Cell>
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                value={item.material}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value;
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.doorValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            material: newValue,
+                                                                                        };
+                                                                                        return { ...prev, doorValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={"Glass"}>กระจก</MenuItem>
+                                                                                <MenuItem value={"Other"}>อื่น ๆ</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
 
-                                                                    <Table.Cell>
-                                                                        <Select
-                                                                            sx={{ width: '100%' }}
-                                                                            disabled={item.material !== "Glass"}
-                                                                            value={item.glassType}
-                                                                            onChange={(e) => {
-                                                                                const newValue = e.target.value;
-                                                                                setFormData((prev) => {
-                                                                                    const updated = [...prev.doorValue];
-                                                                                    updated[index] = {
-                                                                                        ...updated[index],
-                                                                                        glassType: newValue,
-                                                                                    };
-                                                                                    return { ...prev, doorValue: updated };
-                                                                                });
-                                                                            }}
-                                                                        >
-                                                                            <MenuItem value={"SingleGlazing"}>กระจกใสธรรมดา</MenuItem>
-                                                                            <MenuItem value={"Tinted"}>กระจกสี</MenuItem>
-                                                                            <MenuItem value={"Low-E"}>กระจก Low-E</MenuItem>
-                                                                        </Select>
-                                                                    </Table.Cell>
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                disabled={item.material !== "Glass"}
+                                                                                value={item.glassType}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value;
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.doorValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            glassType: newValue,
+                                                                                        };
+                                                                                        return { ...prev, doorValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={"SingleGlazing"}>กระจกใสธรรมดา</MenuItem>
+                                                                                <MenuItem value={"Tinted"}>กระจกสี</MenuItem>
+                                                                                <MenuItem value={"Low-E"}>กระจก Low-E</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
 
-                                                                    <Table.Cell>
-                                                                        <Select
-                                                                            sx={{ width: '100%' }}
-                                                                            disabled={item.material !== "Glass"}
-                                                                            value={item.haveShade}
-                                                                            onChange={(e) => {
-                                                                                const newValue = e.target.value === "true";
-                                                                                setFormData((prev) => {
-                                                                                    const updated = [...prev.doorValue];
-                                                                                    updated[index] = {
-                                                                                        ...updated[index],
-                                                                                        haveShade: newValue,
-                                                                                    };
-                                                                                    return { ...prev, doorValue: updated };
-                                                                                });
-                                                                            }}
-                                                                        >
-                                                                            <MenuItem value={"true"}>มี</MenuItem>
-                                                                            <MenuItem value={"false"}>ไม่มี</MenuItem>
-                                                                        </Select>
-                                                                    </Table.Cell>
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                disabled={item.material !== "Glass"}
+                                                                                value={item.haveShade}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value === "true";
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.doorValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            haveShade: newValue,
+                                                                                        };
+                                                                                        return { ...prev, doorValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={"true"}>มี</MenuItem>
+                                                                                <MenuItem value={"false"}>ไม่มี</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
 
-                                                                    <Table.Cell>
-                                                                        <Select
-                                                                            sx={{ width: '100%' }}
-                                                                            disabled={item.material !== "Glass"}
-                                                                            value={item.haveCurtain}
-                                                                            onChange={(e) => {
-                                                                                const newValue = e.target.value === "true";
-                                                                                setFormData((prev) => {
-                                                                                    const updated = [...prev.doorValue];
-                                                                                    updated[index] = {
-                                                                                        ...updated[index],
-                                                                                        haveCurtain: newValue,
-                                                                                    };
-                                                                                    return { ...prev, doorValue: updated };
-                                                                                });
-                                                                            }}
-                                                                        >
-                                                                            <MenuItem value={"true"}>มี</MenuItem>
-                                                                            <MenuItem value={"false"}>ไม่มี</MenuItem>
-                                                                        </Select>
-                                                                    </Table.Cell>
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                disabled={item.material !== "Glass"}
+                                                                                value={item.haveCurtain}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value === "true";
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.doorValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            haveCurtain: newValue,
+                                                                                        };
+                                                                                        return { ...prev, doorValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={"true"}>มี</MenuItem>
+                                                                                <MenuItem value={"false"}>ไม่มี</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
 
-                                                                    <Table.Cell>
-                                                                        <TextField
-                                                                            type="number"
-                                                                            sx={{ width: '100%' }}
-                                                                            value={item.quantity}
-                                                                            onChange={(e) => {
-                                                                                const newValue = Number(e.target.value);
-                                                                                setFormData((prev) => {
-                                                                                    const updated = [...prev.doorValue];
-                                                                                    updated[index] = {
-                                                                                        ...updated[index],
-                                                                                        quantity: newValue,
-                                                                                    };
-                                                                                    return { ...prev, doorValue: updated };
-                                                                                });
-                                                                            }}
-                                                                        />
-                                                                    </Table.Cell>
-                                                                </Table.Row>
-                                                            );
-                                                        })}
-                                                    </Table.Body>
-                                                </Table.Root>
-                                            </Field.Root>
-                                        </GridItem>
+                                                                        <Table.Cell>
+                                                                            <TextField
+                                                                                type="number"
+                                                                                sx={{ width: '100%' }}
+                                                                                value={item.quantity}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = Number(e.target.value);
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.doorValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            quantity: newValue,
+                                                                                        };
+                                                                                        return { ...prev, doorValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            />
+                                                                        </Table.Cell>
+                                                                    </Table.Row>
+                                                                );
+                                                            })}
+                                                        </Table.Body>
+                                                    </Table.Root>
+                                                </Field.Root>
+                                            </GridItem>
+                                        </Collapse>
                                     </Grid>
                                 </GridItem>
 
@@ -1658,180 +2017,182 @@ function MainPage() {
                                             </Field.Root>
                                         </GridItem>
 
-                                        <GridItem>
-                                            <Field.Root>
-                                                <Field.Label>ระบุข้อมูลหน้าต่าง</Field.Label>
-                                                <Table.Root size="sm" variant={"outline"}>
-                                                    <Table.Header>
-                                                        <Table.Row>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                ทิศทาง
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                ประเภท
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                วัสดุ
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                ชนิดกระจก
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                กันสาด
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                ม่านบังแดด
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                จำนวน
-                                                            </Table.ColumnHeader>
-                                                        </Table.Row>
-                                                    </Table.Header>
-                                                    <Table.Body>
-                                                        {formData.windowValue.map((item, index) => {
-                                                            return (
-                                                                <Table.Row key={index}>
-                                                                    <Table.Cell textAlign={"center"}>{item.directionName}</Table.Cell>
+                                        <Collapse in={(formData.windowValue.length > 0) && (formData.windowValue[0].directionName !== "None")} timeout={400} unmountOnExit>
+                                            <GridItem>
+                                                <Field.Root>
+                                                    <Field.Label>ระบุข้อมูลหน้าต่าง</Field.Label>
+                                                    <Table.Root size="sm" variant={"outline"}>
+                                                        <Table.Header>
+                                                            <Table.Row>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ทิศทาง
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ประเภท
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    วัสดุ
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ชนิดกระจก
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    กันสาด
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ม่านบังแดด
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    จำนวน
+                                                                </Table.ColumnHeader>
+                                                            </Table.Row>
+                                                        </Table.Header>
+                                                        <Table.Body>
+                                                            {formData.windowValue.map((item, index) => {
+                                                                return (
+                                                                    <Table.Row key={index}>
+                                                                        <Table.Cell textAlign={"center"}>{directions.find((d) => d.value === item.directionName)?.label}</Table.Cell>
 
-                                                                    <Table.Cell>
-                                                                        <Select
-                                                                            sx={{ width: '100%' }}
-                                                                            value={item.windowType ?? ''}
-                                                                            onChange={(e) => {
-                                                                                const newValue = e.target.value;
-                                                                                setFormData((prev) => {
-                                                                                    const updated = [...prev.windowValue];
-                                                                                    updated[index] = {
-                                                                                        ...updated[index],
-                                                                                        windowType: newValue,
-                                                                                    };
-                                                                                    return { ...prev, windowValue: updated };
-                                                                                });
-                                                                            }}
-                                                                        >
-                                                                            {
-                                                                                windowTypeData.map((windowtype, index) => {
-                                                                                    return (
-                                                                                        <MenuItem key={index} value={windowtype.WindowType}>{windowTypeLabelMap[windowtype.WindowType]}</MenuItem>
-                                                                                    )
-                                                                                })
-                                                                            }
-                                                                        </Select>
-                                                                    </Table.Cell>
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                value={item.windowType ?? ''}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value;
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.windowValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            windowType: newValue,
+                                                                                        };
+                                                                                        return { ...prev, windowValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                {
+                                                                                    windowTypeData.map((windowtype, index) => {
+                                                                                        return (
+                                                                                            <MenuItem key={index} value={windowtype.WindowType}>{windowTypeLabelMap[windowtype.WindowType]}</MenuItem>
+                                                                                        )
+                                                                                    })
+                                                                                }
+                                                                            </Select>
+                                                                        </Table.Cell>
 
-                                                                    <Table.Cell>
-                                                                        <Select
-                                                                            sx={{ width: '100%' }}
-                                                                            value={item.material}
-                                                                            onChange={(e) => {
-                                                                                const newValue = e.target.value;
-                                                                                setFormData((prev) => {
-                                                                                    const updated = [...prev.windowValue];
-                                                                                    updated[index] = {
-                                                                                        ...updated[index],
-                                                                                        material: newValue,
-                                                                                    };
-                                                                                    return { ...prev, windowValue: updated };
-                                                                                });
-                                                                            }}
-                                                                        >
-                                                                            <MenuItem value={"Glass"}>กระจก</MenuItem>
-                                                                            <MenuItem value={"Other"}>อื่น ๆ</MenuItem>
-                                                                        </Select>
-                                                                    </Table.Cell>
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                value={item.material}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value;
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.windowValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            material: newValue,
+                                                                                        };
+                                                                                        return { ...prev, windowValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={"Glass"}>กระจก</MenuItem>
+                                                                                <MenuItem value={"Other"}>อื่น ๆ</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
 
-                                                                    <Table.Cell>
-                                                                        <Select
-                                                                            sx={{ width: '100%' }}
-                                                                            disabled={item.material !== "Glass"}
-                                                                            value={item.glassType}
-                                                                            onChange={(e) => {
-                                                                                const newValue = e.target.value;
-                                                                                setFormData((prev) => {
-                                                                                    const updated = [...prev.windowValue];
-                                                                                    updated[index] = {
-                                                                                        ...updated[index],
-                                                                                        glassType: newValue,
-                                                                                    };
-                                                                                    return { ...prev, windowValue: updated };
-                                                                                });
-                                                                            }}
-                                                                        >
-                                                                            <MenuItem value={"SingleGlazing"}>กระจกใสธรรมดา</MenuItem>
-                                                                            <MenuItem value={"Tinted"}>กระจกสี</MenuItem>
-                                                                            <MenuItem value={"Low-E"}>กระจก Low-E</MenuItem>
-                                                                        </Select>
-                                                                    </Table.Cell>
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                disabled={item.material !== "Glass"}
+                                                                                value={item.glassType}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value;
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.windowValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            glassType: newValue,
+                                                                                        };
+                                                                                        return { ...prev, windowValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={"SingleGlazing"}>กระจกใสธรรมดา</MenuItem>
+                                                                                <MenuItem value={"Tinted"}>กระจกสี</MenuItem>
+                                                                                <MenuItem value={"Low-E"}>กระจก Low-E</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
 
-                                                                    <Table.Cell>
-                                                                        <Select
-                                                                            sx={{ width: '100%' }}
-                                                                            disabled={item.material !== "Glass"}
-                                                                            value={item.haveShade}
-                                                                            onChange={(e) => {
-                                                                                const newValue = e.target.value === "true";
-                                                                                setFormData((prev) => {
-                                                                                    const updated = [...prev.windowValue];
-                                                                                    updated[index] = {
-                                                                                        ...updated[index],
-                                                                                        haveShade: newValue,
-                                                                                    };
-                                                                                    return { ...prev, windowValue: updated };
-                                                                                });
-                                                                            }}
-                                                                        >
-                                                                            <MenuItem value={"true"}>มี</MenuItem>
-                                                                            <MenuItem value={"false"}>ไม่มี</MenuItem>
-                                                                        </Select>
-                                                                    </Table.Cell>
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                disabled={item.material !== "Glass"}
+                                                                                value={item.haveShade}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value === "true";
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.windowValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            haveShade: newValue,
+                                                                                        };
+                                                                                        return { ...prev, windowValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={"true"}>มี</MenuItem>
+                                                                                <MenuItem value={"false"}>ไม่มี</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
 
-                                                                    <Table.Cell>
-                                                                        <Select
-                                                                            sx={{ width: '100%' }}
-                                                                            disabled={item.material !== "Glass"}
-                                                                            value={item.haveCurtain}
-                                                                            onChange={(e) => {
-                                                                                const newValue = e.target.value === "true";
-                                                                                setFormData((prev) => {
-                                                                                    const updated = [...prev.windowValue];
-                                                                                    updated[index] = {
-                                                                                        ...updated[index],
-                                                                                        haveCurtain: newValue,
-                                                                                    };
-                                                                                    return { ...prev, windowValue: updated };
-                                                                                });
-                                                                            }}
-                                                                        >
-                                                                            <MenuItem value={"true"}>มี</MenuItem>
-                                                                            <MenuItem value={"false"}>ไม่มี</MenuItem>
-                                                                        </Select>
-                                                                    </Table.Cell>
+                                                                        <Table.Cell>
+                                                                            <Select
+                                                                                sx={{ width: '100%' }}
+                                                                                disabled={item.material !== "Glass"}
+                                                                                value={item.haveCurtain}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value === "true";
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.windowValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            haveCurtain: newValue,
+                                                                                        };
+                                                                                        return { ...prev, windowValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value={"true"}>มี</MenuItem>
+                                                                                <MenuItem value={"false"}>ไม่มี</MenuItem>
+                                                                            </Select>
+                                                                        </Table.Cell>
 
-                                                                    <Table.Cell>
-                                                                        <TextField
-                                                                            type="number"
-                                                                            sx={{ width: '100%' }}
-                                                                            value={item.quantity}
-                                                                            onChange={(e) => {
-                                                                                const newValue = Number(e.target.value);
-                                                                                setFormData((prev) => {
-                                                                                    const updated = [...prev.windowValue];
-                                                                                    updated[index] = {
-                                                                                        ...updated[index],
-                                                                                        quantity: newValue,
-                                                                                    };
-                                                                                    return { ...prev, windowValue: updated };
-                                                                                });
-                                                                            }}
-                                                                        />
-                                                                    </Table.Cell>
-                                                                </Table.Row>
-                                                            );
-                                                        })}
-                                                    </Table.Body>
-                                                </Table.Root>
-                                            </Field.Root>
-                                        </GridItem>
+                                                                        <Table.Cell>
+                                                                            <TextField
+                                                                                type="number"
+                                                                                sx={{ width: '100%' }}
+                                                                                value={item.quantity}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = Number(e.target.value);
+                                                                                    setFormData((prev) => {
+                                                                                        const updated = [...prev.windowValue];
+                                                                                        updated[index] = {
+                                                                                            ...updated[index],
+                                                                                            quantity: newValue,
+                                                                                        };
+                                                                                        return { ...prev, windowValue: updated };
+                                                                                    });
+                                                                                }}
+                                                                            />
+                                                                        </Table.Cell>
+                                                                    </Table.Row>
+                                                                );
+                                                            })}
+                                                        </Table.Body>
+                                                    </Table.Root>
+                                                </Field.Root>
+                                            </GridItem>
+                                        </Collapse>
                                     </Grid>
                                 </GridItem>
 
