@@ -24,6 +24,9 @@ const theme = createTheme({
                 root: {
                     "& .MuiInputBase-root": {
                         height: 40,
+                        "&.Mui-disabled": {
+                            backgroundColor: "#f0f0f0", // สีเทา
+                        },
                     },
                     "& .MuiInputBase-input": {
                         height: "100%",
@@ -40,7 +43,10 @@ const theme = createTheme({
                     height: 40,
                     display: "flex",
                     alignItems: "center",
-                    padding: "0px 14px"
+                    padding: "0px 14px",
+                    "&.Mui-disabled": {
+                        backgroundColor: "#f0f0f0", // สีเทา
+                    },
                 },
             },
         },
@@ -48,6 +54,9 @@ const theme = createTheme({
             styleOverrides: {
                 outlined: {
                     top: -8,
+                    "&.Mui-disabled": {
+                        color: "#a0a0a0", // สีตัวอักษรเทา
+                    },
                 },
             },
         },
