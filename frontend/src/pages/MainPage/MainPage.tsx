@@ -1815,6 +1815,7 @@ function MainPage() {
     console.log("wallValue: ", formData.wallValue);
     // console.log("calculateVariable: ", calculateVariable)
 
+    // @ts-ignore
     const handleClickCalculate = () => {
         setFormData(prev => {
             const { totalQGlassByMonth, totalQSolarByMonth } = calculateTotalGlass(prev);
@@ -1959,9 +1960,9 @@ function MainPage() {
 
     return (
         <Box className="main-page-container">
-            <Button onClick={handleClickCalculate}>
+            {/* <Button onClick={handleClickCalculate}>
                 Calculate
-            </Button>
+            </Button> */}
             <Box
                 width={"100%"}
                 padding={"5rem 2rem"}
