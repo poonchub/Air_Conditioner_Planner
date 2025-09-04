@@ -13,7 +13,7 @@ import {
     Tabs,
     Text,
 } from "@chakra-ui/react";
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import "./MainPage.css";
 import { AirVent, FileText, Home, MapPin } from "lucide-react";
 import {
@@ -67,7 +67,6 @@ import type { SHGFtoShadeRow } from "@/types/SHGFtoShadeRow";
 import type { SHGFNoShadeRow } from "@/types/SHGFNoShadeRow";
 // @ts-ignore
 import {
-    findSHGFNoShade,
     interpolateSHGFNoShadeByLat,
     loadSHGFNoShadeData,
 } from "@/data/SHGFNoShadeService";
@@ -880,7 +879,7 @@ function MainPage() {
                         };
                     });
 
-                    // console.log("cltdByMonth: ", cltdByMonth);
+                    console.log("cltdByMonth: ", cltdByMonth);
                 }
             });
         }
@@ -1998,7 +1997,7 @@ function MainPage() {
                             ตำแหน่งติดตั้ง
                         </Tabs.Trigger>
                         <Tabs.Trigger value="five" transition={"all ease 0.5s"}>
-                            <MapPin />
+                            <FileText />
                             แสดงผล
                         </Tabs.Trigger>
                     </Tabs.List>
