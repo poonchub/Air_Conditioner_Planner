@@ -1,0 +1,5 @@
+Insulation,Ceiling,Uvalue
+NoInsulation,NoCeiling,3.8
+NoInsulation,WithCeiling,3.3
+WithInsulation,NoCeiling,0.92
+WithInsulation,WithCeiling,0.86
