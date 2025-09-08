@@ -71,7 +71,7 @@ import {
     loadSHGFNoShadeData,
 } from "@/data/SHGFNoShadeService";
 import { findSHGFtoShade, loadSHGFtoShadeData } from "@/data/SHGFtoShadeService";
-import { findUCLTDWallTimeRange, findUvalueWall, loadUCLTDWallData } from "@/data/UCLTDWallService";
+import { findUCLTDWallTimeRange, findUvalueWall, getUCLTDWallData, loadUCLTDWallData } from "@/data/UCLTDWallService";
 import type { UCLTDWallRow } from "@/types/UCLTDWallRow";
 import type { GlassCLTDRow } from "@/types/GlassCLTDRow";
 import { findCLTDGlassTimeRange, loadCLTDGlassData } from "@/data/CLTDService";
@@ -136,6 +136,7 @@ type WallValue = {
     haveShade: boolean;
     haveCurtain: boolean;
     glassType: string;
+    qWallByMonth: any[];
     qWallGlassByMonth: any[];
     qSolarWallGlassByMonth: any[];
     qSolarGlassByMonth?: any[];
@@ -152,10 +153,17 @@ type NoAirDirectionValue = {
     qIn: number;
 };
 
-type floorValue = {
+type FloorValue = {
     uFloor: number;
     qFloor: number;
 };
+
+type RoofValue = {
+    qRoofByMonth: {
+        Month: string;
+        CLTDTime: any[];
+    }[];
+}
 
 type FormDataProps = {
     province: string;
@@ -166,6 +174,7 @@ type FormDataProps = {
     startTime: string;
     endTime: string;
     ceiling: string;
+    ceilingHeight: string;
     buildingType: string;
     roomPosition: string;
     roofType: string;
@@ -176,7 +185,8 @@ type FormDataProps = {
     doorValue: DoorValue[];
     windowValue: WindowValue[];
     wallValue: WallValue[];
-    floorValue: floorValue;
+    floorValue: FloorValue;
+    roofValue: RoofValue;
 };
 
 type CalculateVariableProps = {
@@ -188,6 +198,11 @@ type CalculateVariableProps = {
     qWindowCfmSum: number;
     areaValue: [];
     cltdW: number;
+    totalQGlassByMonth: any[];
+    totalQSolarByMonth: any[];
+    totalQWallByMonth: any[];
+    totalQLoadByMonth: any[];
+    maxRecord: any[]
 };
 
 type HourData = {
@@ -205,19 +220,43 @@ function MainPage() {
         subRoom: null,
     });
 
+    // const [formData, setFormData] = useState<FormDataProps>({
+    //     province: "",
+    //     people: 1,
+    //     width: 3,
+    //     depth: 3,
+    //     height: 3,
+    //     startTime: "",
+    //     endTime: "",
+    //     ceiling: "",
+    //     ceilingHeight: "",
+    //     buildingType: "",
+    //     roomPosition: "",
+    //     roofType: "",
+    //     kRoofColor: 0,
+    //     ballastFactor: 1,
+    //     noAirDirectionValue: [],
+    //     equipmentValue: [],
+    //     doorValue: [],
+    //     windowValue: [],
+    //     wallValue: [],
+    //     floorValue: { uFloor: 0, qFloor: 0 },
+    //     roofValue: { qRoofByMonth: [] }
+    // });
     const [formData, setFormData] = useState<FormDataProps>({
-        province: "",
+        province: "Chanthaburi",
         people: 1,
         width: 3,
         depth: 3,
         height: 3,
-        startTime: "",
-        endTime: "",
-        ceiling: "",
-        buildingType: "",
+        startTime: "6",
+        endTime: "17",
+        ceiling: "HaveCeilinglessthan",
+        ceilingHeight: "Low",
+        buildingType: "Single",
         roomPosition: "",
-        roofType: "",
-        kRoofColor: 0,
+        roofType: "Concrete",
+        kRoofColor: 1,
         ballastFactor: 1,
         noAirDirectionValue: [],
         equipmentValue: [],
@@ -225,6 +264,7 @@ function MainPage() {
         windowValue: [],
         wallValue: [],
         floorValue: { uFloor: 0, qFloor: 0 },
+        roofValue: { qRoofByMonth: [] }
     });
 
     // @ts-ignore
@@ -410,6 +450,7 @@ function MainPage() {
                             haveShade: false,
                             haveCurtain: false,
                             glassType: "",
+                            qWallByMonth: [],
                             qWallGlassByMonth: [],
                             qSolarWallGlassByMonth: [],
                         },
@@ -434,6 +475,7 @@ function MainPage() {
                         haveShade: false,
                         haveCurtain: false,
                         glassType: "",
+                        qWallByMonth: [],
                         qWallGlassByMonth: [],
                         qSolarWallGlassByMonth: [],
                     });
@@ -574,15 +616,24 @@ function MainPage() {
         }
     }, [selectedOption]);
 
+    // qInfiltration
     useEffect(() => {
         if (formData.province && calculateVariable.qDoorCfmSum && calculateVariable.qWindowCfmSum) {
             const climatedt = getClimateData(climateData, formData.province);
 
             const qInfiltration =
-                (calculateVariable.qDoorCfmSum + calculateVariable.qWindowCfmSum) *
-                (1.085 * (Number(climatedt?.DB_OutMax) - Number(climatedt?.DB_In)) +
-                    0.7 * (Number(climatedt?.W_Out) - Number(climatedt?.W_In)));
-            console.log("qInfiltration: ", qInfiltration);
+                (
+                    (
+                        (
+                            calculateVariable.qDoorCfmSum + calculateVariable.qWindowCfmSum
+                        ) * (
+                            1.1 * ((Number(climatedt?.DB_OutMax) - Number(climatedt?.DB_In)) * 1.8 + 32)
+                        ) + (
+                            4748 * (Number(climatedt?.W_Out) - Number(climatedt?.W_In))
+                        )
+                    )
+                )  * 0.29307 ;
+            // console.log("qInfiltration: ", qInfiltration);
             setCalculateVariable((prev) => ({
                 ...prev,
                 qInfiltration: qInfiltration,
@@ -590,6 +641,7 @@ function MainPage() {
         }
     }, [formData.province, calculateVariable.qDoorCfmSum, calculateVariable.qWindowCfmSum]);
 
+    // qLight
     useEffect(() => {
         if (formData.ballastFactor && dataFind.lightPowerDensity) {
             const qLight =
@@ -597,7 +649,7 @@ function MainPage() {
                 formData.depth *
                 formData.ballastFactor *
                 Number(dataFind.lightPowerDensity);
-            console.log("qLight: ", qLight);
+            // console.log("qLight: ", qLight);
             setCalculateVariable((prev) => ({
                 ...prev,
                 qLight: qLight,
@@ -605,10 +657,11 @@ function MainPage() {
         }
     }, [formData.ballastFactor, dataFind.lightPowerDensity]);
 
+    // qPeople
     useEffect(() => {
         if (formData.people && dataFind.totalHeat) {
             const qPeople = formData.people * Number(dataFind.totalHeat);
-            console.log("qPeople: ", qPeople);
+            // console.log("qPeople: ", qPeople);
             setCalculateVariable((prev) => ({
                 ...prev,
                 qPeople: qPeople,
@@ -764,20 +817,20 @@ function MainPage() {
                 formData.startTime,
                 formData.endTime
             );
-            console.log("ucltRoofData: ", ucltRoofData);
+            // console.log("ucltRoofData: ", ucltRoofData);
 
             const climatedt = getClimateData(climateData, formData.province);
             const interpolated = interpolateLMByLat(lmWallAndRoofData, Number(climatedt?.Latitude));
             const interpolatedHOR = interpolated.filter((d) => d.Direction === "HOR");
-            console.log(`interpolated ${climatedt?.Latitude}: `, interpolated);
-            console.log(`interpolatedHOR ${climatedt?.Latitude}: `, interpolatedHOR);
+            // console.log(`interpolated ${climatedt?.Latitude}: `, interpolated);
+            // console.log(`interpolatedHOR ${climatedt?.Latitude}: `, interpolatedHOR);
 
             const uValueRoof = findUvalue(roofData, formData.roofType, formData.ceiling);
-            console.log("uValueRoof: ", uValueRoof);
+            // console.log("uValueRoof: ", uValueRoof);
 
             const roofArea = formData.width * formData.depth;
 
-            const cltdByMonth = interpolatedHOR.map((lmRow) => {
+            const qRoofByMonth = interpolatedHOR.map((lmRow) => {
                 const month = lmRow.Month;
 
                 // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
@@ -801,7 +854,14 @@ function MainPage() {
                 };
             });
 
-            console.log("cltdByMonth: ", cltdByMonth);
+            console.log("qRoofByMonth: ", qRoofByMonth);
+
+            setFormData((prev) => ({
+                ...prev,
+                roofValue: {
+                    qRoofByMonth: qRoofByMonth
+                }
+            }));
         }
     }, [
         formData.startTime,
@@ -848,14 +908,14 @@ function MainPage() {
                         (d) => d.Direction === item.directionName
                     );
                     // console.log(`interpolated ${climatedt?.Latitude}: `, interpolated)
-                    // console.log(`interpolatedDirection ${climatedt?.Latitude}: `, interpolatedDirection)
+                    console.log(`interpolatedDirection ${climatedt?.Latitude}: `, interpolatedDirection)
 
                     const uValueWall = findUvalueWall(ucltWallData, item.material);
-                    // console.log("uValueWall: ", uValueWall)
+                    console.log("uValueWall: ", uValueWall)
 
                     const wallArea = item.wallArea;
 
-                    const cltdByMonth = interpolatedDirection.map((lmRow) => {
+                    const qWallByMonth = interpolatedDirection.map((lmRow) => {
                         const month = lmRow.Month;
 
                         // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
@@ -878,8 +938,34 @@ function MainPage() {
                             CLTDTime,
                         };
                     });
+                    // console.log("qWallByMonth: ", qWallByMonth);
 
-                    console.log("cltdByMonth: ", cltdByMonth);
+                    setFormData((prev) => {
+                        const updatedWallValue = prev.wallValue.map((wall) => {
+                            if (wall.directionName === item.directionName) {
+                                if (
+                                    JSON.stringify(wall.qWallByMonth) ===
+                                    JSON.stringify(qWallByMonth)
+                                ) {
+                                    return wall;
+                                }
+                                return {
+                                    ...wall,
+                                    qWallByMonth: qWallByMonth,
+                                };
+                            }
+                            return wall;
+                        });
+
+                        if (JSON.stringify(updatedWallValue) === JSON.stringify(prev.wallValue)) {
+                            return prev;
+                        }
+
+                        return {
+                            ...prev,
+                            wallValue: updatedWallValue,
+                        };
+                    });
                 }
             });
         }
@@ -897,28 +983,49 @@ function MainPage() {
     // qFloor
     useEffect(() => {
         if (
-            formData.width != 0 &&
-            formData.depth != 0 &&
+            formData.width !== 0 &&
+            formData.depth !== 0 &&
             (formData.buildingType === "Single" ||
                 (formData.buildingType === "Multi" && formData.roomPosition === "Bottom"))
         ) {
             const climatedt = getClimateData(climateData, formData.province);
 
+            if (!climatedt) return;
+
             const qFloor =
                 formData.width *
                 formData.depth *
                 formData.floorValue.uFloor *
-                (Number(climatedt?.DB_OutMax) - Number(climatedt?.DB_In));
+                (Number(climatedt.DB_OutMax) - 2.78 - Number(climatedt.DB_In));
 
-            setFormData((prev) => ({
-                ...prev,
-                floorValue: {
-                    ...prev.floorValue,
-                    qFloor: qFloor,
-                },
-            }));
+            console.log("formData.depth: ", formData.depth)
+            console.log("formData.width: ", formData.width)
+            console.log("formData.floorValue.uFloor: ", formData.floorValue.uFloor)
+            console.log("qFloor: ", qFloor)
+
+            setFormData((prev) => {
+                if (prev.floorValue.qFloor === qFloor) {
+                    return prev;
+                }
+                return {
+                    ...prev,
+                    floorValue: {
+                        ...prev.floorValue,
+                        qFloor,
+                    },
+                };
+            });
         }
-    }, [formData.floorValue, formData.width, formData.depth]);
+    }, [
+        formData.width,
+        formData.depth,
+        formData.buildingType,
+        formData.roomPosition,
+        formData.floorValue.uFloor,
+        formData.province,
+        climateData,
+    ]);
+
 
     // qWallGlass
     useEffect(() => {
@@ -1576,11 +1683,20 @@ function MainPage() {
 
             const updatedNoAirDirectionValue = formData.noAirDirectionValue.map((item) => {
                 // หา U-value
-                const ufloorIn = findUfloorIn(
-                    UfloorInData,
-                    item.haveInsulation ? "WithInsulation" : "NoInsulation",
-                    item.haveCeiling ? "WithCeiling" : "NoCeiling"
-                );
+                let uIn
+
+                if (item.directionName !== "Bottom" && item.directionName !== "Top") {
+                    uIn = getUCLTDWallData(
+                        UCLTDWallData,
+                        item.material
+                    );
+                } else {
+                    uIn = findUfloorIn(
+                        UfloorInData,
+                        item.haveInsulation ? "WithInsulation" : "NoInsulation",
+                        item.haveCeiling ? "WithCeiling" : "NoCeiling"
+                    );
+                }
 
                 // คำนวณพื้นที่
                 let area = 0;
@@ -1602,7 +1718,7 @@ function MainPage() {
 
                 // คำนวณ qIn
                 const qIn =
-                    Number(ufloorIn?.Uvalue) *
+                    Number(uIn?.Uvalue) *
                     area *
                     (Number(climatedt?.DB_OutMax) - 2.78 - Number(climatedt?.DB_In));
 
@@ -1787,6 +1903,114 @@ function MainPage() {
         return { totalQGlassByMonth, totalQSolarByMonth };
     }
 
+    function calculateTotalWall(formData: FormDataProps) {
+        const wallValues = formData.wallValue;
+
+        // union ของทุกเดือนจาก qWallByMonth
+        const monthsSet = new Set<string>();
+        wallValues.forEach(wall => {
+            (wall.qWallByMonth || []).forEach(m => monthsSet.add(m.Month));
+        });
+        const months = Array.from(monthsSet);
+
+        // รวม qWall
+        const totalQWallByMonth = months.map(month => {
+            const maxHourLength = Math.max(
+                ...wallValues.map(wall => {
+                    const monthData = (wall.qWallByMonth || []).find(m => m.Month === month);
+                    return monthData?.CLTDTime?.length || 0;
+                }),
+                0
+            );
+
+            const CLTDTime = Array.from({ length: maxHourLength }, (_, idx) => {
+                const Hour = wallValues
+                    .map(wall => {
+                        const monthData = (wall.qWallByMonth || []).find(m => m.Month === month);
+                        return monthData?.CLTDTime[idx]?.Hour;
+                    })
+                    .find(Boolean) || String(idx + 1);
+
+                const qWall = wallValues.reduce((sum, wall) => {
+                    const monthData = (wall.qWallByMonth || []).find(m => m.Month === month);
+                    const hourVal = monthData?.CLTDTime[idx]?.qWall || 0;
+                    return sum + hourVal;
+                }, 0);
+
+                return { Hour, qWall };
+            });
+
+            return { Month: month, CLTDTime };
+        });
+
+        return { totalQWallByMonth };
+    }
+
+    function calculateTotalLoad(
+        roofValue: { qRoofByMonth: any[] },
+        totalQWallByMonth: any[],
+        totalQGlassByMonth: any[],
+        totalQSolarByMonth: any[]
+    ) {
+        // รวมเดือนจากทุกค่า
+        const monthsSet = new Set<string>();
+        (roofValue.qRoofByMonth || []).forEach(m => monthsSet.add(m.Month));
+        (totalQWallByMonth || []).forEach(m => monthsSet.add(m.Month));
+        (totalQGlassByMonth || []).forEach(m => monthsSet.add(m.Month));
+        (totalQSolarByMonth || []).forEach(m => monthsSet.add(m.Month));
+        const months = Array.from(monthsSet);
+
+        let maxRecord: {
+            Month: string;
+            Hour: string;
+            qTotal: number;
+            qRoof: number;
+            qWall: number;
+            qGlass: number;
+            qSolarGlass: number;
+        } | null = null;
+
+        const totalQLoadByMonth = months.map(month => {
+            // หา maxHourLength ของทุก source
+            const maxHourLength = Math.max(
+                (roofValue.qRoofByMonth.find(m => m.Month === month)?.CLTDTime?.length) || 0,
+                (totalQWallByMonth.find(m => m.Month === month)?.CLTDTime?.length) || 0,
+                (totalQGlassByMonth.find(m => m.Month === month)?.CLTDTime?.length) || 0,
+                (totalQSolarByMonth.find(m => m.Month === month)?.QSolarTime?.length) || 0,
+            );
+
+            const CLTDTime = Array.from({ length: maxHourLength }, (_, idx) => {
+                const Hour =
+                    roofValue.qRoofByMonth.find(m => m.Month === month)?.CLTDTime[idx]?.Hour ||
+                    totalQWallByMonth.find(m => m.Month === month)?.CLTDTime[idx]?.Hour ||
+                    totalQGlassByMonth.find(m => m.Month === month)?.CLTDTime[idx]?.Hour ||
+                    totalQSolarByMonth.find(m => m.Month === month)?.QSolarTime[idx]?.Hour ||
+                    String(idx + 1);
+
+                const qRoof =
+                    roofValue.qRoofByMonth.find(m => m.Month === month)?.CLTDTime[idx]?.qRoof || 0;
+                const qWall =
+                    totalQWallByMonth.find(m => m.Month === month)?.CLTDTime[idx]?.qWall || 0;
+                const qGlass =
+                    totalQGlassByMonth.find(m => m.Month === month)?.CLTDTime[idx]?.qGlass || 0;
+                const qSolarGlass =
+                    totalQSolarByMonth.find(m => m.Month === month)?.QSolarTime[idx]?.qSolarGlass || 0;
+
+                const qTotal = qRoof + qWall + qGlass + qSolarGlass;
+
+                // อัปเดต maxRecord
+                if (!maxRecord || qTotal > maxRecord.qTotal) {
+                    maxRecord = { Month: month, Hour, qTotal, qRoof, qWall, qGlass, qSolarGlass };
+                }
+
+                return { Hour, qRoof, qWall, qGlass, qSolarGlass, qTotal };
+            });
+
+            return { Month: month, CLTDTime };
+        });
+
+        return { totalQLoadByMonth, maxRecord };
+    }
 
     useEffect(() => {
         if (
@@ -1810,26 +2034,59 @@ function MainPage() {
         }
     }, [formData.doorValue, formData.windowValue, formData.wallValue]);
 
-    console.log("doorValue: ", formData.doorValue);
-    console.log("windowValue: ", formData.windowValue);
-    console.log("wallValue: ", formData.wallValue);
-    // console.log("calculateVariable: ", calculateVariable)
+    const handleClickCalculateAll = () => {
+        const { totalQGlassByMonth, totalQSolarByMonth } = calculateTotalGlass(formData);
+        const { totalQWallByMonth } = calculateTotalWall(formData);
+        const { totalQLoadByMonth, maxRecord } = calculateTotalLoad(
+            formData.roofValue,
+            totalQWallByMonth,
+            totalQGlassByMonth,
+            totalQSolarByMonth
+        );
 
-    // @ts-ignore
-    const handleClickCalculate = () => {
-        setFormData(prev => {
-            const { totalQGlassByMonth, totalQSolarByMonth } = calculateTotalGlass(prev);
+        console.log("totalQGlassByMonth: ", totalQGlassByMonth);
+        console.log("totalQSolarByMonth: ", totalQSolarByMonth);
+        console.log("totalQWallByMonth: ", totalQWallByMonth);
+        console.log("totalQLoadByMonth: ", totalQLoadByMonth);
+        console.log("maxRecord: ", maxRecord);
 
-            console.log("totalQGlassByMonth: ", totalQGlassByMonth);
-            console.log("totalQSolarByMonth: ", totalQSolarByMonth);
+        setCalculateVariable((prev) => ({
+            ...prev,
+            totalQGlassByMonth,
+            totalQSolarByMonth,
+            totalQWallByMonth,
+            totalQLoadByMonth,
+            maxRecord: maxRecord ?? []
+        }))
 
-            return {
-                ...prev,
-                totalQGlassByMonth,
-                totalQSolarByMonth,
-            };
-        });
-    }
+        // setFormData(prev => {
+        //     const { totalQGlassByMonth, totalQSolarByMonth } = calculateTotalGlass(prev);
+        //     const { totalQWallByMonth } = calculateTotalWall(prev);
+        //     const { totalQLoadByMonth, maxRecord } = calculateTotalLoad(
+        //         prev.roofValue,
+        //         totalQWallByMonth,
+        //         totalQGlassByMonth,
+        //         totalQSolarByMonth
+        //     );
+
+        //     console.log("totalQGlassByMonth: ", totalQGlassByMonth);
+        //     console.log("totalQSolarByMonth: ", totalQSolarByMonth);
+        //     console.log("totalQWallByMonth: ", totalQWallByMonth);
+        //     console.log("totalQLoadByMonth: ", totalQLoadByMonth);
+        //     console.log("maxRecord: ", maxRecord);
+
+        //     // ✅ อัปเดตทีเดียว
+        //     return {
+        //         ...prev,
+        //         totalQGlassByMonth,
+        //         totalQSolarByMonth,
+        //         totalQWallByMonth,
+        //         totalQLoadByMonth,
+        //         maxRecord
+        //     };
+        // });
+    };
+
 
     const airConditionerTypes = [
         { id: 1, title: "Wall Type", image: "/images/option/wall_type.png" },
@@ -1894,7 +2151,6 @@ function MainPage() {
         { label: "ไม่มี", value: "None" },
     ];
 
-    // @ts-ignore
     const hourOptions = Array.from({ length: 24 }, (_, i) => {
         const hour = (i + 1).toString();
         return {
@@ -1903,52 +2159,7 @@ function MainPage() {
         };
     });
 
-    // @ts-ignore
-    const roofShapes = createListCollection({
-        items: [
-            { label: "หลังคาทรงหน้าจั่ว", value: "1" },
-            { label: "หลังคาทรงหมาแหงน", value: "2" },
-            { label: "หลังคาปั้นหยา", value: "3" },
-            { label: "หลังคาทรงแบน", value: "4" },
-            { label: "อื่น ๆ", value: "5" },
-        ],
-    });
-
-    // @ts-ignore
-    const materials = createListCollection({
-        items: [
-            { label: "กระจก", value: "1" },
-            { label: "ไม้อัด", value: "2" },
-            { label: "อิฐ + ปูน", value: "3" },
-        ],
-    });
-
-    // @ts-ignore
-    const wallSides = createListCollection({
-        items: [
-            { label: "ผนังด้านสั้น", value: "1" },
-            { label: "ผนังด้านยาว", value: "2" },
-        ],
-    });
-
-    // @ts-ignore
-    const colors = createListCollection({
-        items: [
-            { label: "สีเข้ม", value: "1" },
-            { label: "สีสว่าง", value: "2" },
-        ],
-    });
-
-    // @ts-ignore
-    const buildingTypes = createListCollection({
-        items: [
-            { label: "อาคารชั้นเดียว", value: "1" },
-            { label: "อาคารหลายชั้น", value: "2" },
-        ],
-    });
-
-    // @ts-ignore
-    const filterAirConditionerTypes = airConditionerTypes.filter((item) => {
+    const filterAirConditionerTypes = airConditionerTypes.filter(() => {
         // if (formData.ceilingAreaId[0] === "3") {
         //     return String(item.id) === "1";
         // } else if (formData.ceilingAreaId[0] === "2") {
@@ -1960,9 +2171,9 @@ function MainPage() {
 
     return (
         <Box className="main-page-container">
-            {/* <Button onClick={handleClickCalculate}>
+            <Button onClick={handleClickCalculateAll}>
                 Calculate
-            </Button> */}
+            </Button>
             <Box
                 width={"100%"}
                 padding={"5rem 2rem"}
@@ -2196,30 +2407,61 @@ function MainPage() {
                                         </GridItem>
 
                                         <GridItem colSpan={1}>
-                                            <Field.Root>
-                                                <Field.Label>มีพื้นที่ฝ้าเพดานหรือไม่</Field.Label>
-                                                <FormControl fullWidth>
-                                                    <Select
-                                                        value={formData.ceiling}
-                                                        onChange={(e) =>
-                                                            setFormData((prev) => ({
-                                                                ...prev,
-                                                                ceiling: e.target.value,
-                                                            }))
-                                                        }
-                                                    >
-                                                        <MenuItem value={"HaveCeilinglessthan"}>
-                                                            มีน้อยกว่า 30 cm
-                                                        </MenuItem>
-                                                        <MenuItem value={"HaveCeilinggreaterthan"}>
-                                                            มีมากกว่า 30 cm
-                                                        </MenuItem>
-                                                        <MenuItem value={"NoCeiling"}>
-                                                            ไม่มี
-                                                        </MenuItem>
-                                                    </Select>
-                                                </FormControl>
-                                            </Field.Root>
+                                            <Grid gridTemplateColumns={"repeat(2, 1fr)"} gap={5}>
+                                                <GridItem colSpan={1}>
+                                                    <Field.Root>
+                                                        <Field.Label>มีพื้นที่ฝ้าเพดานหรือไม่</Field.Label>
+                                                        <FormControl fullWidth>
+                                                            <Select
+                                                                value={formData.ceiling}
+                                                                onChange={(e) =>
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        ceiling: e.target.value,
+                                                                    }))
+                                                                }
+                                                            >
+                                                                <MenuItem value={"HaveCeilinglessthan"}>
+                                                                    มีน้อยกว่า 30 cm
+                                                                </MenuItem>
+                                                                <MenuItem value={"HaveCeilinggreaterthan"}>
+                                                                    มีมากกว่า 30 cm
+                                                                </MenuItem>
+                                                                <MenuItem value={"NoCeiling"}>
+                                                                    ไม่มี
+                                                                </MenuItem>
+                                                            </Select>
+                                                        </FormControl>
+                                                    </Field.Root>
+                                                </GridItem>
+                                                <GridItem colSpan={1}>
+                                                    <Field.Root>
+                                                        <Field.Label>ความสูงเพดาน (จากพื้นถึงฝ้าเพดาน)</Field.Label>
+                                                        <FormControl fullWidth>
+                                                            <Select
+                                                                value={formData.ceilingHeight}
+                                                                onChange={(e) =>
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        ceilingHeight: e.target.value,
+                                                                    }))
+                                                                }
+                                                            >
+                                                                <MenuItem value={"Low"}>
+                                                                    ต่ำ (2-2.5)
+                                                                </MenuItem>
+                                                                <MenuItem value={"Middle"}>
+                                                                    กลาง (2.5-3)
+                                                                </MenuItem>
+                                                                <MenuItem value={"High"}>
+                                                                    สูง (&gt;3)
+                                                                </MenuItem>
+                                                            </Select>
+                                                        </FormControl>
+                                                    </Field.Root>
+                                                </GridItem>
+                                            </Grid>
+
                                         </GridItem>
 
                                         <GridItem colSpan={1}>
@@ -3237,115 +3479,116 @@ function MainPage() {
                                 </GridItem>
 
                                 {/* Roof */}
-                                <Collapse
+                                {/* <Collapse
                                     in={formData.roomPosition === "Top"}
                                     timeout={400}
                                     unmountOnExit
                                 >
-                                    <GridItem
-                                        border={"1px solid #c5c5c6"}
-                                        borderRadius={10}
-                                        padding={5}
-                                        height={"100%"}
-                                    >
-                                        <Grid gap={5}>
-                                            <GridItem>
-                                                <Field.Root>
-                                                    <Field.Label>หลังคา (Roof)</Field.Label>
-                                                    <Field.Label>ระบุข้อมูลหลังคา</Field.Label>
-                                                    <Table.Root size="sm" variant={"outline"}>
-                                                        <Table.Header>
-                                                            <Table.Row>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    วัสดุ
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    สีภายนอก
-                                                                </Table.ColumnHeader>
-                                                            </Table.Row>
-                                                        </Table.Header>
-                                                        <Table.Body>
-                                                            <Table.Row>
-                                                                <Table.Cell>
-                                                                    <FormControl fullWidth>
-                                                                        <Select
+                                    
+                                </Collapse> */}
+                                <GridItem
+                                    border={"1px solid #c5c5c6"}
+                                    borderRadius={10}
+                                    padding={5}
+                                    height={"100%"}
+                                >
+                                    <Grid gap={5}>
+                                        <GridItem>
+                                            <Field.Root>
+                                                <Field.Label>หลังคา (Roof)</Field.Label>
+                                                <Field.Label>ระบุข้อมูลหลังคา</Field.Label>
+                                                <Table.Root size="sm" variant={"outline"}>
+                                                    <Table.Header>
+                                                        <Table.Row>
+                                                            <Table.ColumnHeader
+                                                                fontWeight={600}
+                                                                textAlign={"center"}
+                                                            >
+                                                                วัสดุ
+                                                            </Table.ColumnHeader>
+                                                            <Table.ColumnHeader
+                                                                fontWeight={600}
+                                                                textAlign={"center"}
+                                                            >
+                                                                สีภายนอก
+                                                            </Table.ColumnHeader>
+                                                        </Table.Row>
+                                                    </Table.Header>
+                                                    <Table.Body>
+                                                        <Table.Row>
+                                                            <Table.Cell>
+                                                                <FormControl fullWidth>
+                                                                    <Select
+                                                                        value={
+                                                                            formData.roofType
+                                                                        }
+                                                                        onChange={(e) =>
+                                                                            setFormData(
+                                                                                (prev) => ({
+                                                                                    ...prev,
+                                                                                    roofType:
+                                                                                        e.target
+                                                                                            .value,
+                                                                                })
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <MenuItem
+                                                                            value={"Concrete"}
+                                                                        >
+                                                                            หลังคาคอนกรีต
+                                                                        </MenuItem>
+                                                                        <MenuItem
                                                                             value={
-                                                                                formData.roofType
-                                                                            }
-                                                                            onChange={(e) =>
-                                                                                setFormData(
-                                                                                    (prev) => ({
-                                                                                        ...prev,
-                                                                                        roofType:
-                                                                                            e.target
-                                                                                                .value,
-                                                                                    })
-                                                                                )
+                                                                                "ConcreteTile"
                                                                             }
                                                                         >
-                                                                            <MenuItem
-                                                                                value={"Concrete"}
-                                                                            >
-                                                                                หลังคาคอนกรีต
-                                                                            </MenuItem>
-                                                                            <MenuItem
-                                                                                value={
-                                                                                    "ConcreteTile"
-                                                                                }
-                                                                            >
-                                                                                หลังคากระเบื้องคอนกรีต
-                                                                            </MenuItem>
-                                                                            <MenuItem
-                                                                                value={"MetalSheet"}
-                                                                            >
-                                                                                หลังคาเมทัลชีท
-                                                                            </MenuItem>
-                                                                        </Select>
-                                                                    </FormControl>
-                                                                </Table.Cell>
-                                                                <Table.Cell>
-                                                                    <FormControl fullWidth>
-                                                                        <Select
-                                                                            value={
-                                                                                formData.kRoofColor
-                                                                            }
-                                                                            onChange={(e) =>
-                                                                                setFormData(
-                                                                                    (prev) => ({
-                                                                                        ...prev,
-                                                                                        kRoofColor:
-                                                                                            Number(
-                                                                                                e
-                                                                                                    .target
-                                                                                                    .value
-                                                                                            ),
-                                                                                    })
-                                                                                )
-                                                                            }
+                                                                            หลังคากระเบื้องคอนกรีต
+                                                                        </MenuItem>
+                                                                        <MenuItem
+                                                                            value={"MetalSheet"}
                                                                         >
-                                                                            <MenuItem value={0.5}>
-                                                                                สีสว่าง
-                                                                            </MenuItem>
-                                                                            <MenuItem value={1}>
-                                                                                สีเข้ม
-                                                                            </MenuItem>
-                                                                        </Select>
-                                                                    </FormControl>
-                                                                </Table.Cell>
-                                                            </Table.Row>
-                                                        </Table.Body>
-                                                    </Table.Root>
-                                                </Field.Root>
-                                            </GridItem>
-                                        </Grid>
-                                    </GridItem>
-                                </Collapse>
+                                                                            หลังคาเมทัลชีท
+                                                                        </MenuItem>
+                                                                    </Select>
+                                                                </FormControl>
+                                                            </Table.Cell>
+                                                            <Table.Cell>
+                                                                <FormControl fullWidth>
+                                                                    <Select
+                                                                        value={
+                                                                            formData.kRoofColor
+                                                                        }
+                                                                        onChange={(e) =>
+                                                                            setFormData(
+                                                                                (prev) => ({
+                                                                                    ...prev,
+                                                                                    kRoofColor:
+                                                                                        Number(
+                                                                                            e
+                                                                                                .target
+                                                                                                .value
+                                                                                        ),
+                                                                                })
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <MenuItem value={0.5}>
+                                                                            สีสว่าง
+                                                                        </MenuItem>
+                                                                        <MenuItem value={1}>
+                                                                            สีเข้ม
+                                                                        </MenuItem>
+                                                                    </Select>
+                                                                </FormControl>
+                                                            </Table.Cell>
+                                                        </Table.Row>
+                                                    </Table.Body>
+                                                </Table.Root>
+                                            </Field.Root>
+                                        </GridItem>
+                                    </Grid>
+                                </GridItem>
 
                                 {/* Floor */}
                                 <Collapse
@@ -3403,7 +3646,7 @@ function MainPage() {
                                                                                         floorValue:
                                                                                         {
                                                                                             ...prev.floorValue,
-                                                                                            ufloor: newValue,
+                                                                                            uFloor: newValue,
                                                                                         },
                                                                                     })
                                                                                 );

@@ -1,8 +1,8 @@
-BuildingType,SubType,MaximumLighting_Power_Density
+BuildingType,SubType,MaximumLighting_Power_Density 
 Home,Bedroom,12
 Home,LivingRoom,12
 Home,DiningRoom,12
-Commercial,Office,10
-Commercial,Shop,11
-Commercial,Restaurant,11
-PublicEducation,General,10
+Commercial,Office,14
+Commercial,Shop,18
+Commercial,Restaurant,18
+PublicEducation,General,14
