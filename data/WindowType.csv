@@ -1,7 +1,7 @@
 WindowType,Width,Height,WindowArea,Perimeter,cfm
-SwingWindow,0.6,1.1,0.66,3.4,1.7
-SwingDoubleWindow,1.2,1.1,1.32,4.6,2.3
-AwningWindow,0.8,1.1,0.88,3.8,1.9
-AccordianWindow,0.9,1.2,1.08,4.2,2.1
-SlidingWindow,1.6,1.1,1.76,5.4,2.7
-FixedWindow,1,1,1,4,2
+SwingWindow,0.6,1.1,0.66,3.4,5.57736
+SwingDoubleWindow,1.2,1.1,1.32,4.6,7.54584
+AwningWindow,0.8,1.1,0.88,3.8,6.23352
+AccordianWindow,0.9,1.2,1.08,4.2,6.88968
+SlidingWindow,1.6,1.1,1.76,5.4,8.85816
+FixedWindow,1,1,1,4,6.5616

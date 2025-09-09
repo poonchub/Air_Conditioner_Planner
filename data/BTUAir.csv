@@ -1,0 +1,26 @@
+AirType,BTU
+Wall Type,5000
+Wall Type,9000
+Wall Type,12000
+Wall Type,15000
+Wall Type,18000
+Wall Type,20000
+Wall Type,21000
+Wall Type,22000
+Wall Type,24000
+Ceiling Suspended,9000
+Ceiling Suspended,12000
+Ceiling Suspended,15000
+Ceiling Suspended,18000
+Ceiling Suspended,21000
+Ceiling Suspended,24000
+Ceiling Suspended,30000
+Ceiling Suspended,36000
+Ceiling Suspended,42000
+Cassette Type,"9,600"
+Cassette Type,"12,000"
+Cassette Type,"18,000"
+Cassette Type,"24,000"
+Cassette Type,"30,000"
+Cassette Type,"36,000"
+Cassette Type,48000
