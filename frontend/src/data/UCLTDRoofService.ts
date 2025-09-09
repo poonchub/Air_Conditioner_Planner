@@ -6,7 +6,7 @@ export async function loadUCLTDRoofData(): Promise<UCLTDRoofRow[]> {
     return loadCsv<UCLTDRoofRow>(`${BASE_URL}/data/UCLTDRoof.csv`);
 }
 
-export function getUCLTDWallData(
+export function getUCLTDRoofData(
     data: UCLTDRoofRow[],
     roofType: string,
 ): UCLTDRoofRow | undefined {

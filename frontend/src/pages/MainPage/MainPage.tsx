@@ -3,12 +3,12 @@ import {
     Button,
     Collapsible,
     Container,
-    createListCollection,
     Field,
     Flex,
     Grid,
     GridItem,
     Heading,
+    Image,
     Table,
     Tabs,
     Text,
@@ -79,6 +79,8 @@ import { findU_SCglass, loadU_SCglassData } from "@/data/U_SCglassService";
 import type { U_SCglassRow } from "@/types/U_SCglassRow";
 import type { UfloorInRow } from "@/types/UfloorInRow";
 import { findUfloorIn, loadUfloorInData } from "@/data/UfloorInService";
+import type { BTUAirRow } from "@/types/BTUAirRow";
+import { getClosestBTUAirData, loadBTUAirRowData } from "@/data/BTUAirService";
 
 export const BASE_URL = import.meta.env.BASE_URL;
 
@@ -202,7 +204,11 @@ type CalculateVariableProps = {
     totalQSolarByMonth: any[];
     totalQWallByMonth: any[];
     totalQLoadByMonth: any[];
-    maxRecord: any[]
+    maxRecord: any;
+    qTotalAll: number;
+    totalQIn: number;
+    airConditionerType: string;
+    recommendedBTU: number
 };
 
 type HourData = {
@@ -215,9 +221,11 @@ function MainPage() {
     const [selectedOption, setSelectedOption] = useState<{
         buildingType?: string | null;
         subRoom?: string | null;
+        selectedAirConditionerType?: string | null,
     }>({
         buildingType: null,
         subRoom: null,
+        selectedAirConditionerType: null
     });
 
     // const [formData, setFormData] = useState<FormDataProps>({
@@ -244,7 +252,7 @@ function MainPage() {
     //     roofValue: { qRoofByMonth: [] }
     // });
     const [formData, setFormData] = useState<FormDataProps>({
-        province: "Chanthaburi",
+        province: "Kanchanaburi",
         people: 1,
         width: 3,
         depth: 3,
@@ -277,6 +285,8 @@ function MainPage() {
         qWindowCfmSum: 0,
         areaValue: [],
         cltdW: 0,
+        qTotalAll: 0,
+        recommendedBTU: 0
     });
 
     const [dataFind, setDataFind] = useState<DataFindProps>({
@@ -305,6 +315,7 @@ function MainPage() {
     const [CLTDGlassData, setCLTDGlassData] = useState<GlassCLTDRow[]>([]);
     const [U_SCglassData, setU_SCglassData] = useState<U_SCglassRow[]>([]);
     const [UfloorInData, setUfloorInData] = useState<UfloorInRow[]>([]);
+    const [BTUAirData, setBTUAirData] = useState<BTUAirRow[]>([]);
 
     const handleDoorDirectionChange = (event: SelectChangeEvent<string[]>) => {
         const {
@@ -562,6 +573,7 @@ function MainPage() {
         loadCLTDGlassData().then(setCLTDGlassData);
         loadU_SCglassData().then(setU_SCglassData);
         loadUfloorInData().then(setUfloorInData);
+        loadBTUAirRowData().then(setBTUAirData);
     }, []);
 
     useEffect(() => {
@@ -632,14 +644,14 @@ function MainPage() {
                             4748 * (Number(climatedt?.W_Out) - Number(climatedt?.W_In))
                         )
                     )
-                )  * 0.29307 ;
+                ) * 0.29307;
             // console.log("qInfiltration: ", qInfiltration);
             setCalculateVariable((prev) => ({
                 ...prev,
                 qInfiltration: qInfiltration,
             }));
         }
-    }, [formData.province, calculateVariable.qDoorCfmSum, calculateVariable.qWindowCfmSum]);
+    }, [formData.province, calculateVariable.qDoorCfmSum, calculateVariable.qWindowCfmSum, JSON.stringify(climateData)]);
 
     // qLight
     useEffect(() => {
@@ -650,12 +662,13 @@ function MainPage() {
                 formData.ballastFactor *
                 Number(dataFind.lightPowerDensity);
             // console.log("qLight: ", qLight);
+            // console.log("lightPowerDensity: ", dataFind.lightPowerDensity);
             setCalculateVariable((prev) => ({
                 ...prev,
                 qLight: qLight,
             }));
         }
-    }, [formData.ballastFactor, dataFind.lightPowerDensity]);
+    }, [formData.width, formData.depth, formData.ballastFactor, JSON.stringify(dataFind.lightPowerDensity)]);
 
     // qPeople
     useEffect(() => {
@@ -671,197 +684,166 @@ function MainPage() {
 
     // qEquipmentValue
     useEffect(() => {
-        if (formData.equipmentValue) {
-            let sum = 0;
-            formData.equipmentValue.map((item) => {
-                sum += item.qEquipment;
-            });
-            // console.log("qEquipmentSum: ", sum)
-            setCalculateVariable((prev) => ({ ...prev, qEquipmentSum: sum }));
+        if (formData.equipmentValue && formData.equipmentValue.length > 0) {
+            const sum = formData.equipmentValue.reduce(
+                (acc, item) => acc + Number(item.qEquipment || 0),
+                0
+            );
+
+            // console.log("qEquipmentSum: ", sum);
+
+            setCalculateVariable((prev) => ({
+                ...prev,
+                qEquipmentSum: sum
+            }));
         }
-    }, [formData.equipmentValue]);
+    }, [
+        ...formData.equipmentValue.map(item => item.qEquipment)
+    ]);
 
     // DoorValue
     useEffect(() => {
-        setFormData((prev) => {
-            const updatedDoorValue = prev.doorValue.map((door) => {
-                const doortypedt = getDoorTypeData(doorTypeData, door.doorType);
+        if (!formData.doorValue || formData.doorValue.length === 0) return;
 
-                const newCfm = Number(doortypedt?.cfm ?? 0) * door.quantity;
+        const updatedDoorValue = formData.doorValue.map((door) => {
+            const doortypedt = getDoorTypeData(doorTypeData, door.doorType);
+            const newCfm = Number(doortypedt?.cfm ?? 0) * door.quantity;
 
-                if (door.cfm === newCfm) return door;
-
-                return {
-                    ...door,
-                    cfm: newCfm,
-                    doorArea: Number(doortypedt?.DoorArea) * door.quantity,
-                };
-            });
-
-            const isChanged = updatedDoorValue.some((d, i) => d.cfm !== prev.doorValue[i].cfm);
-            if (!isChanged) return prev;
-
-            const sum = updatedDoorValue.reduce((acc, d) => acc + d.cfm, 0);
-            setCalculateVariable((prevCalc) => ({
-                ...prevCalc,
-                qDoorCfmSum: sum,
-            }));
+            if (door.cfm === newCfm) return door;
 
             return {
-                ...prev,
-                doorValue: updatedDoorValue,
+                ...door,
+                cfm: newCfm,
+                doorArea: Number(doortypedt?.DoorArea ?? 0) * door.quantity,
             };
         });
-    }, [formData.doorValue, doorTypeData]);
+
+        const sum = updatedDoorValue.reduce((acc, d) => acc + Number(d.cfm || 0), 0);
+
+        setFormData(prev => ({ ...prev, doorValue: updatedDoorValue }));
+        setCalculateVariable(prevCalc => ({ ...prevCalc, qDoorCfmSum: sum }));
+
+    }, [
+        JSON.stringify(formData.doorValue.map(d => [d.doorType, d.quantity, d.cfm])),
+        doorTypeData
+    ]);
 
     // WindowValue
     useEffect(() => {
-        setFormData((prev) => {
-            const updatedWindowValue = prev.windowValue.map((window) => {
-                const windowtypedt = getWindowTypeData(windowTypeData, window.windowType);
+        if (!formData.windowValue || formData.windowValue.length === 0) return;
 
-                const newCfm = Number(windowtypedt?.cfm ?? 0) * window.quantity;
+        const updatedWindowValue = formData.windowValue.map((window) => {
+            const windowtypedt = getWindowTypeData(windowTypeData, window.windowType);
+            const newCfm = Number(windowtypedt?.cfm ?? 0) * window.quantity;
 
-                if (window.cfm === newCfm) return window;
-
-                return {
-                    ...window,
-                    cfm: newCfm,
-                    windowArea: Number(windowtypedt?.WindowArea) * window.quantity,
-                };
-            });
-
-            const isChanged = updatedWindowValue.some((w, i) => w.cfm !== prev.windowValue[i].cfm);
-            if (!isChanged) return prev;
-
-            const sum = updatedWindowValue.reduce((acc, w) => acc + w.cfm, 0);
-            setCalculateVariable((prevCalc) => ({
-                ...prevCalc,
-                qWindowCfmSum: sum,
-            }));
+            if (window.cfm === newCfm) return window;
 
             return {
-                ...prev,
-                windowValue: updatedWindowValue,
+                ...window,
+                cfm: newCfm,
+                windowArea: Number(windowtypedt?.WindowArea ?? 0) * window.quantity,
             };
         });
-    }, [formData.windowValue, windowTypeData]);
+
+        const sum = updatedWindowValue.reduce((acc, w) => acc + Number(w.cfm || 0), 0);
+
+        setFormData(prev => ({ ...prev, windowValue: updatedWindowValue }));
+        setCalculateVariable(prevCalc => ({ ...prevCalc, qWindowCfmSum: sum }));
+
+    }, [
+        JSON.stringify(formData.windowValue.map(w => [w.windowType, w.quantity, w.cfm])),
+        windowTypeData
+    ]);
 
     // WallValue
     useEffect(() => {
-        // คำนวณใหม่ทุกครั้งที่มีการเปลี่ยนค่า
-        setFormData((prev) => {
-            const newWallValue = prev.wallValue.map((wall) => {
-                // หาประตูและหน้าต่างที่ตรงกับ direction ของผนังนี้
-                const matchedDoors = prev.doorValue.filter(
-                    (d) => d.directionName === wall.directionName
-                );
-                const matchedWindows = prev.windowValue.filter(
-                    (w) => w.directionName === wall.directionName
-                );
+        setFormData(prev => {
+            const newWallValue = prev.wallValue.map(wall => {
+                const matchedDoors = prev.doorValue.filter(d => d.directionName === wall.directionName);
+                const matchedWindows = prev.windowValue.filter(w => w.directionName === wall.directionName);
 
-                // พื้นที่ผนังทั้งหมด อ้างอิงจาก position (สมมติคุณมี wallAreaMap)
-                let totalWallArea = 0;
-                if (wall.position === "Width") {
-                    totalWallArea = formData.width * formData.height;
-                } else if (wall.position === "Depth") {
-                    totalWallArea = formData.depth * formData.height;
-                }
+                const totalWallArea =
+                    wall.position === "Width" ? prev.width * prev.height :
+                        wall.position === "Depth" ? prev.depth * prev.height : 0;
 
-                // คำนวณพื้นที่ประตูที่เป็นกระจก
-                let glassAreaDoor = 0;
-                matchedDoors.forEach((door) => {
+                const glassAreaDoor = matchedDoors.reduce((sum, door) => {
                     if (door.material === "Glass") {
                         const doorArea = getDoorTypeData(doorTypeData, door.doorType);
-                        glassAreaDoor += Number(doorArea?.DoorArea) * door.quantity;
+                        return sum + (Number(doorArea?.DoorArea ?? 0) * door.quantity);
                     }
-                });
+                    return sum;
+                }, 0);
 
-                // คำนวณพื้นที่หน้าต่างที่เป็นกระจก
-                let glassAreaWindow = 0;
-                matchedWindows.forEach((win) => {
+                const glassAreaWindow = matchedWindows.reduce((sum, win) => {
                     if (win.material === "Glass") {
                         const windowArea = getWindowTypeData(windowTypeData, win.windowType);
-                        glassAreaWindow += Number(windowArea?.WindowArea) * win.quantity;
+                        return sum + (Number(windowArea?.WindowArea ?? 0) * win.quantity);
                     }
-                });
+                    return sum;
+                }, 0);
 
                 return {
                     ...wall,
                     wallArea: totalWallArea - (glassAreaDoor + glassAreaWindow),
                     glassAreaWindow,
-                    glassAreaDoor,
+                    glassAreaDoor
                 };
             });
 
             return { ...prev, wallValue: newWallValue };
         });
-    }, [formData.doorValue, formData.windowValue, formData.width, formData.depth, formData.height]);
+    }, [
+        JSON.stringify(formData.doorValue.map(d => [d.doorType, d.quantity, d.material])),
+        JSON.stringify(formData.windowValue.map(w => [w.windowType, w.quantity, w.material])),
+        formData.width,
+        formData.depth,
+        formData.height,
+    ]);
 
     // qRoof
     useEffect(() => {
         if (
-            formData.roofType != "" &&
-            formData.ceiling != "" &&
-            formData.startTime != "" &&
-            formData.endTime != "" &&
-            formData.province != "" &&
-            formData.kRoofColor != 0 &&
-            formData.width != 0 &&
-            formData.depth != 0
+            formData.roofType &&
+            formData.ceiling &&
+            formData.startTime &&
+            formData.endTime &&
+            formData.province &&
+            formData.kRoofColor &&
+            formData.width &&
+            formData.depth
         ) {
-            const ucltRoofData = findUCLTDRoofTimeRange(
-                roofData,
-                formData.roofType,
-                formData.ceiling,
-                formData.startTime,
-                formData.endTime
-            );
-            // console.log("ucltRoofData: ", ucltRoofData);
+            setFormData(prev => {
+                const ucltRoofData = findUCLTDRoofTimeRange(
+                    roofData,
+                    prev.roofType,
+                    prev.ceiling,
+                    prev.startTime,
+                    prev.endTime
+                );
 
-            const climatedt = getClimateData(climateData, formData.province);
-            const interpolated = interpolateLMByLat(lmWallAndRoofData, Number(climatedt?.Latitude));
-            const interpolatedHOR = interpolated.filter((d) => d.Direction === "HOR");
-            // console.log(`interpolated ${climatedt?.Latitude}: `, interpolated);
-            // console.log(`interpolatedHOR ${climatedt?.Latitude}: `, interpolatedHOR);
+                const climatedt = getClimateData(climateData, prev.province);
+                const interpolated = interpolateLMByLat(lmWallAndRoofData, Number(climatedt?.Latitude));
+                const interpolatedHOR = interpolated.filter(d => d.Direction === "HOR");
 
-            const uValueRoof = findUvalue(roofData, formData.roofType, formData.ceiling);
-            // console.log("uValueRoof: ", uValueRoof);
+                const uValueRoof = findUvalue(roofData, prev.roofType, prev.ceiling);
+                const roofArea = prev.width * prev.depth;
 
-            const roofArea = formData.width * formData.depth;
-
-            const qRoofByMonth = interpolatedHOR.map((lmRow) => {
-                const month = lmRow.Month;
-
-                // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
-                const CLTDTime = ucltRoofData.map((ucltRow) => {
-                    const CLTDs =
-                        formData.kRoofColor * (Number(ucltRow.CLTDRoof) + Number(lmRow.LM)) +
-                        (25.5 - Number(climatedt?.DB_In)) +
-                        (Number(climatedt?.T_o) - 29.4);
-
-                    const qRoof = CLTDs * Number(uValueRoof) * roofArea;
-
-                    return {
-                        Hour: ucltRow.Hour,
-                        qRoof: qRoof,
-                    };
-                });
+                const qRoofByMonth = interpolatedHOR.map(lmRow => ({
+                    Month: lmRow.Month,
+                    CLTDTime: ucltRoofData.map(ucltRow => {
+                        const CLTDs =
+                            prev.kRoofColor * (Number(ucltRow.CLTDRoof) + Number(lmRow.LM)) +
+                            (25.5 - Number(climatedt?.DB_In)) +
+                            (Number(climatedt?.T_o) - 29.4);
+                        return { Hour: ucltRow.Hour, qRoof: CLTDs * Number(uValueRoof) * roofArea };
+                    })
+                }));
 
                 return {
-                    Month: month,
-                    CLTDTime,
+                    ...prev,
+                    roofValue: { qRoofByMonth }
                 };
             });
-
-            console.log("qRoofByMonth: ", qRoofByMonth);
-
-            setFormData((prev) => ({
-                ...prev,
-                roofValue: {
-                    qRoofByMonth: qRoofByMonth
-                }
-            }));
         }
     }, [
         formData.startTime,
@@ -871,7 +853,7 @@ function MainPage() {
         formData.province,
         formData.kRoofColor,
         formData.width,
-        formData.depth,
+        formData.depth
     ]);
 
     // qWall
@@ -880,93 +862,51 @@ function MainPage() {
             formData.windowValue &&
             formData.doorValue &&
             formData.wallValue &&
-            formData.startTime != "" &&
-            formData.endTime != "" &&
-            formData.province != "" &&
-            formData.width != 0 &&
-            formData.depth != 0
+            formData.startTime &&
+            formData.endTime &&
+            formData.province &&
+            formData.width &&
+            formData.depth
         ) {
-            formData.wallValue.map((item) => {
-                if (item.material !== "Glass") {
+            setFormData(prev => {
+                const climatedt = getClimateData(climateData, prev.province);
+                const interpolated = interpolateLMByLat(lmWallAndRoofData, Number(climatedt?.Latitude));
+
+                const updatedWallValue = prev.wallValue.map(item => {
+                    if (item.material === "Glass") return item; // ข้าม wall กระจก
+
                     const ucltWallData = findUCLTDWallTimeRange(
                         UCLTDWallData,
                         item.material,
                         item.directionName,
-                        formData.startTime,
-                        formData.endTime
+                        prev.startTime,
+                        prev.endTime
                     );
 
-                    // console.log("ucltWallData: ", ucltWallData)
-
-                    const climatedt = getClimateData(climateData, formData.province);
-                    // console.log(`climatedt: `, climatedt)
-                    const interpolated = interpolateLMByLat(
-                        lmWallAndRoofData,
-                        Number(climatedt?.Latitude)
-                    );
-                    const interpolatedDirection = interpolated.filter(
-                        (d) => d.Direction === item.directionName
-                    );
-                    // console.log(`interpolated ${climatedt?.Latitude}: `, interpolated)
-                    console.log(`interpolatedDirection ${climatedt?.Latitude}: `, interpolatedDirection)
-
+                    const interpolatedDirection = interpolated.filter(d => d.Direction === item.directionName);
                     const uValueWall = findUvalueWall(ucltWallData, item.material);
-                    console.log("uValueWall: ", uValueWall)
-
                     const wallArea = item.wallArea;
 
-                    const qWallByMonth = interpolatedDirection.map((lmRow) => {
-                        const month = lmRow.Month;
-
-                        // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
-                        const CLTDTime = ucltWallData.map((ucltRow) => {
+                    const qWallByMonth = interpolatedDirection.map(lmRow => ({
+                        Month: lmRow.Month,
+                        CLTDTime: ucltWallData.map(ucltRow => {
                             const CLTDs =
                                 item.kWallColor * (Number(ucltRow.CLTDWall) + Number(lmRow.LM)) +
                                 (25.5 - Number(climatedt?.DB_In)) +
                                 (Number(climatedt?.T_o) - 29.4);
 
-                            const qWall = CLTDs * Number(uValueWall) * wallArea;
+                            return { Hour: ucltRow.Hour, qWall: CLTDs * Number(uValueWall) * wallArea };
+                        })
+                    }));
 
-                            return {
-                                Hour: ucltRow.Hour,
-                                qWall: qWall,
-                            };
-                        });
+                    if (JSON.stringify(item.qWallByMonth) === JSON.stringify(qWallByMonth)) return item;
 
-                        return {
-                            Month: month,
-                            CLTDTime,
-                        };
-                    });
-                    // console.log("qWallByMonth: ", qWallByMonth);
+                    return { ...item, qWallByMonth };
+                });
 
-                    setFormData((prev) => {
-                        const updatedWallValue = prev.wallValue.map((wall) => {
-                            if (wall.directionName === item.directionName) {
-                                if (
-                                    JSON.stringify(wall.qWallByMonth) ===
-                                    JSON.stringify(qWallByMonth)
-                                ) {
-                                    return wall;
-                                }
-                                return {
-                                    ...wall,
-                                    qWallByMonth: qWallByMonth,
-                                };
-                            }
-                            return wall;
-                        });
+                if (JSON.stringify(updatedWallValue) === JSON.stringify(prev.wallValue)) return prev;
 
-                        if (JSON.stringify(updatedWallValue) === JSON.stringify(prev.wallValue)) {
-                            return prev;
-                        }
-
-                        return {
-                            ...prev,
-                            wallValue: updatedWallValue,
-                        };
-                    });
-                }
+                return { ...prev, wallValue: updatedWallValue };
             });
         }
     }, [
@@ -977,7 +917,7 @@ function MainPage() {
         formData.endTime,
         formData.province,
         formData.width,
-        formData.depth,
+        formData.depth
     ]);
 
     // qFloor
@@ -998,10 +938,7 @@ function MainPage() {
                 formData.floorValue.uFloor *
                 (Number(climatedt.DB_OutMax) - 2.78 - Number(climatedt.DB_In));
 
-            console.log("formData.depth: ", formData.depth)
-            console.log("formData.width: ", formData.width)
-            console.log("formData.floorValue.uFloor: ", formData.floorValue.uFloor)
-            console.log("qFloor: ", qFloor)
+            // console.log("qFloor: ", qFloor)
 
             setFormData((prev) => {
                 if (prev.floorValue.qFloor === qFloor) {
@@ -1026,416 +963,274 @@ function MainPage() {
         climateData,
     ]);
 
-
     // qWallGlass
     useEffect(() => {
         if (
-            formData.windowValue &&
-            formData.doorValue &&
-            formData.wallValue &&
-            formData.startTime != "" &&
-            formData.endTime != "" &&
-            formData.province != "" &&
-            formData.width != 0 &&
-            formData.depth != 0
-        ) {
-            formData.wallValue.map((item) => {
-                if (item.material === "Glass") {
-                    const cltdGlassData = findCLTDGlassTimeRange(
-                        CLTDGlassData,
-                        formData.startTime,
-                        formData.endTime
-                    );
+            !formData.wallValue ||
+            !formData.province ||
+            !formData.startTime ||
+            !formData.endTime ||
+            formData.width === 0 ||
+            formData.depth === 0
+        ) return;
 
-                    // console.log("cltdGlassData: ", cltdGlassData)
+        const climatedt = getClimateData(climateData, formData.province);
+        if (!climatedt) return;
 
-                    const climatedt = getClimateData(climateData, formData.province);
-                    // console.log(`climatedt: `, climatedt)
+        const interpolated = interpolateLMByLat(lmWallAndRoofData, Number(climatedt.Latitude));
 
-                    const interpolated = interpolateLMByLat(
-                        lmWallAndRoofData,
-                        Number(climatedt?.Latitude)
-                    );
-                    const interpolatedDirection = interpolated.filter(
-                        (d) => d.Direction === item.directionName
-                    );
-                    // console.log(`interpolated ${climatedt?.Latitude}: `, interpolated)
-                    // console.log(`interpolatedDirection ${climatedt?.Latitude}: `, interpolatedDirection)
+        const updatedWallValue = formData.wallValue.map((wall) => {
+            if (wall.material !== "Glass") return wall; // skip non-glass walls
 
-                    const uValueGlass = findU_SCglass(U_SCglassData, item.glassType);
-                    // console.log(`uValueGlass: `, uValueGlass?.Uglass)
+            const cltdGlassData = findCLTDGlassTimeRange(
+                CLTDGlassData,
+                formData.startTime,
+                formData.endTime
+            );
 
-                    const wallArea = item.wallArea;
+            const interpolatedDirection = interpolated.filter((d) => d.Direction === wall.directionName);
 
-                    const qWallGlassByMonth = interpolatedDirection.map((lmRow) => {
-                        const month = lmRow.Month;
+            const uValueGlass = findU_SCglass(U_SCglassData, wall.glassType);
 
-                        // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
-                        const CLTDTime = cltdGlassData.map((ucltRow) => {
-                            const CLTDs =
-                                Number(ucltRow.CLTD) +
-                                (25.5 - Number(climatedt?.DB_In)) +
-                                (Number(climatedt?.T_o) - 29.4);
+            const wallArea = wall.wallArea;
 
-                            const qWallGlass = CLTDs * Number(uValueGlass?.Uglass) * wallArea;
+            const qWallGlassByMonth = interpolatedDirection.map((lmRow) => {
+                const month = lmRow.Month;
 
-                            return {
-                                Hour: ucltRow.Hour,
-                                qWallGlass: qWallGlass,
-                            };
-                        });
+                const CLTDTime = cltdGlassData.map((ucltRow) => {
+                    const CLTDs =
+                        Number(ucltRow.CLTD) +
+                        (25.5 - Number(climatedt.DB_In)) +
+                        (Number(climatedt.T_o) - 29.4);
 
-                        return {
-                            Month: month,
-                            CLTDTime,
-                        };
-                    });
+                    const qWallGlass = CLTDs * Number(uValueGlass?.Uglass) * wallArea;
 
-                    // console.log("qWallGlassByMonth: ", qWallGlassByMonth);
+                    return {
+                        Hour: ucltRow.Hour,
+                        qWallGlass,
+                    };
+                });
 
-                    setFormData((prev) => {
-                        const updatedWallValue = prev.wallValue.map((wall) => {
-                            if (wall.directionName === item.directionName) {
-                                if (
-                                    JSON.stringify(wall.qWallGlassByMonth) ===
-                                    JSON.stringify(qWallGlassByMonth)
-                                ) {
-                                    return wall;
-                                }
-                                return {
-                                    ...wall,
-                                    qWallGlassByMonth: qWallGlassByMonth,
-                                };
-                            }
-                            return wall;
-                        });
-
-                        if (JSON.stringify(updatedWallValue) === JSON.stringify(prev.wallValue)) {
-                            return prev;
-                        }
-
-                        return {
-                            ...prev,
-                            wallValue: updatedWallValue,
-                        };
-                    });
-                }
+                return { Month: month, CLTDTime };
             });
+
+            return {
+                ...wall,
+                qWallGlassByMonth,
+            };
+        });
+
+        const isChanged =
+            JSON.stringify(updatedWallValue) !== JSON.stringify(formData.wallValue);
+        if (isChanged) {
+            setFormData((prev) => ({
+                ...prev,
+                wallValue: updatedWallValue,
+            }));
         }
     }, [
-        formData.windowValue,
-        formData.doorValue,
         formData.wallValue,
         formData.startTime,
         formData.endTime,
         formData.province,
         formData.width,
         formData.depth,
+        climateData,
+        lmWallAndRoofData,
+        U_SCglassData,
+        CLTDGlassData,
     ]);
 
     // qDoorGlass
     useEffect(() => {
-        if (
-            formData.doorValue &&
-            formData.startTime != "" &&
-            formData.endTime != "" &&
-            formData.province != ""
-        ) {
-            formData.doorValue.map((item) => {
-                if (item.material === "Glass") {
-                    const cltdGlassData = findCLTDGlassTimeRange(
-                        CLTDGlassData,
-                        formData.startTime,
-                        formData.endTime
-                    );
+        if (!formData.doorValue || !formData.startTime || !formData.endTime || !formData.province) return;
 
-                    // console.log("cltdGlassData: ", cltdGlassData)
+        const climatedt = getClimateData(climateData, formData.province);
+        if (!climatedt) return;
 
-                    const climatedt = getClimateData(climateData, formData.province);
-                    // console.log(`climatedt: `, climatedt)
+        const interpolated = interpolateLMByLat(lmWallAndRoofData, Number(climatedt.Latitude));
 
-                    const interpolated = interpolateLMByLat(
-                        lmWallAndRoofData,
-                        Number(climatedt?.Latitude)
-                    );
-                    const interpolatedDirection = interpolated.filter(
-                        (d) => d.Direction === item.directionName
-                    );
-                    // console.log(`interpolated ${climatedt?.Latitude}: `, interpolated)
-                    // console.log(`interpolatedDirection ${climatedt?.Latitude}: `, interpolatedDirection)
+        const updatedDoorValue = formData.doorValue.map((door) => {
+            if (door.material !== "Glass") return door;
 
-                    const uValueGlass = findU_SCglass(U_SCglassData, item.glassType);
-                    // console.log(`uValueGlass: `, uValueGlass?.Uglass)
+            const cltdGlassData = findCLTDGlassTimeRange(CLTDGlassData, formData.startTime, formData.endTime);
+            const interpolatedDirection = interpolated.filter((d) => d.Direction === door.directionName);
+            const uValueGlass = findU_SCglass(U_SCglassData, door.glassType);
+            const doorArea = door.doorArea;
 
-                    const doorArea = item.doorArea;
+            const qDoorGlassByMonth = interpolatedDirection.map((lmRow) => {
+                const month = lmRow.Month;
+                const CLTDTime = cltdGlassData.map((ucltRow) => {
+                    const CLTDs =
+                        Number(ucltRow.CLTD) +
+                        (25.5 - Number(climatedt.DB_In)) +
+                        (Number(climatedt.T_o) - 29.4);
 
-                    const qDoorGlassByMonth = interpolatedDirection.map((lmRow) => {
-                        const month = lmRow.Month;
-
-                        // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
-                        const CLTDTime = cltdGlassData.map((ucltRow) => {
-                            const CLTDs =
-                                Number(ucltRow.CLTD) +
-                                (25.5 - Number(climatedt?.DB_In)) +
-                                (Number(climatedt?.T_o) - 29.4);
-
-                            const qDoorGlass = CLTDs * Number(uValueGlass?.Uglass) * doorArea;
-
-                            return {
-                                Hour: ucltRow.Hour,
-                                qDoorGlass: qDoorGlass,
-                            };
-                        });
-
-                        return {
-                            Month: month,
-                            CLTDTime,
-                        };
-                    });
-
-                    // console.log("qDoorGlassByMonth: ", qDoorGlassByMonth);
-
-                    setFormData((prev) => {
-                        const updatedDoorValue = prev.doorValue.map((door) => {
-                            if (door.directionName === item.directionName) {
-                                if (
-                                    JSON.stringify(door.qDoorGlassByMonth) ===
-                                    JSON.stringify(qDoorGlassByMonth)
-                                ) {
-                                    return door;
-                                }
-                                return {
-                                    ...door,
-                                    qDoorGlassByMonth: qDoorGlassByMonth,
-                                };
-                            }
-                            return door;
-                        });
-
-                        if (JSON.stringify(updatedDoorValue) === JSON.stringify(prev.doorValue)) {
-                            return prev;
-                        }
-
-                        return {
-                            ...prev,
-                            doorValue: updatedDoorValue,
-                        };
-                    });
-                }
+                    return {
+                        Hour: ucltRow.Hour,
+                        qDoorGlass: CLTDs * Number(uValueGlass?.Uglass) * doorArea,
+                    };
+                });
+                return { Month: month, CLTDTime };
             });
+
+            return {
+                ...door,
+                qDoorGlassByMonth,
+            };
+        });
+
+        // update state เฉพาะถ้ามีการเปลี่ยนแปลงจริง
+        if (JSON.stringify(updatedDoorValue) !== JSON.stringify(formData.doorValue)) {
+            setFormData((prev) => ({
+                ...prev,
+                doorValue: updatedDoorValue,
+            }));
         }
-    }, [formData.doorValue, formData.startTime, formData.endTime, formData.province]);
+    }, [
+        formData.doorValue,
+        formData.startTime,
+        formData.endTime,
+        formData.province,
+        CLTDGlassData,
+        climateData,
+        lmWallAndRoofData,
+        U_SCglassData,
+    ]);
 
     // qWindowGlass
     useEffect(() => {
-        if (
-            formData.windowValue &&
-            formData.startTime != "" &&
-            formData.endTime != "" &&
-            formData.province != ""
-        ) {
-            formData.windowValue.map((item) => {
-                if (item.material === "Glass") {
-                    const cltdGlassData = findCLTDGlassTimeRange(
-                        CLTDGlassData,
-                        formData.startTime,
-                        formData.endTime
-                    );
+        if (!formData.windowValue || !formData.startTime || !formData.endTime || !formData.province) return;
 
-                    // console.log("cltdGlassData: ", cltdGlassData)
+        const climatedt = getClimateData(climateData, formData.province);
+        if (!climatedt) return;
 
-                    const climatedt = getClimateData(climateData, formData.province);
-                    // console.log(`climatedt: `, climatedt)
+        const interpolated = interpolateLMByLat(lmWallAndRoofData, Number(climatedt.Latitude));
 
-                    const interpolated = interpolateLMByLat(
-                        lmWallAndRoofData,
-                        Number(climatedt?.Latitude)
-                    );
-                    const interpolatedDirection = interpolated.filter(
-                        (d) => d.Direction === item.directionName
-                    );
-                    // console.log(`interpolated ${climatedt?.Latitude}: `, interpolated)
-                    // console.log(`interpolatedDirection ${climatedt?.Latitude}: `, interpolatedDirection)
+        const updatedWindowValue = formData.windowValue.map((window) => {
+            if (window.material !== "Glass") return window;
 
-                    const uValueGlass = findU_SCglass(U_SCglassData, item.glassType);
-                    // console.log(`uValueGlass: `, uValueGlass?.Uglass)
+            const cltdGlassData = findCLTDGlassTimeRange(CLTDGlassData, formData.startTime, formData.endTime);
+            const interpolatedDirection = interpolated.filter((d) => d.Direction === window.directionName);
+            const uValueGlass = findU_SCglass(U_SCglassData, window.glassType);
+            const windowArea = window.windowArea;
 
-                    const windowArea = item.windowArea;
+            const qWindowGlassByMonth = interpolatedDirection.map((lmRow) => {
+                const month = lmRow.Month;
+                const CLTDTime = cltdGlassData.map((ucltRow) => {
+                    const CLTDs =
+                        Number(ucltRow.CLTD) +
+                        (25.5 - Number(climatedt.DB_In)) +
+                        (Number(climatedt.T_o) - 29.4);
 
-                    const qWindowGlassByMonth = interpolatedDirection.map((lmRow) => {
-                        const month = lmRow.Month;
-
-                        // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
-                        const CLTDTime = cltdGlassData.map((ucltRow) => {
-                            const CLTDs =
-                                Number(ucltRow.CLTD) +
-                                (25.5 - Number(climatedt?.DB_In)) +
-                                (Number(climatedt?.T_o) - 29.4);
-
-                            const qWindowGlass = CLTDs * Number(uValueGlass?.Uglass) * windowArea;
-
-                            return {
-                                Hour: ucltRow.Hour,
-                                qWindowGlass: qWindowGlass,
-                            };
-                        });
-
-                        return {
-                            Month: month,
-                            CLTDTime,
-                        };
-                    });
-
-                    // console.log("qWindowGlassByMonth: ", qWindowGlassByMonth);
-
-                    setFormData((prev) => {
-                        const updatedWindowValue = prev.windowValue.map((window) => {
-                            if (window.directionName === item.directionName) {
-                                if (
-                                    JSON.stringify(window.qWindowGlassByMonth) ===
-                                    JSON.stringify(qWindowGlassByMonth)
-                                ) {
-                                    return window;
-                                }
-                                return {
-                                    ...window,
-                                    qWindowGlassByMonth: qWindowGlassByMonth,
-                                };
-                            }
-                            return window;
-                        });
-
-                        if (
-                            JSON.stringify(updatedWindowValue) === JSON.stringify(prev.windowValue)
-                        ) {
-                            return prev;
-                        }
-
-                        return {
-                            ...prev,
-                            windowValue: updatedWindowValue,
-                        };
-                    });
-                }
+                    return {
+                        Hour: ucltRow.Hour,
+                        qWindowGlass: CLTDs * Number(uValueGlass?.Uglass) * windowArea,
+                    };
+                });
+                return { Month: month, CLTDTime };
             });
+
+            return {
+                ...window,
+                qWindowGlassByMonth,
+            };
+        });
+
+        if (JSON.stringify(updatedWindowValue) !== JSON.stringify(formData.windowValue)) {
+            setFormData((prev) => ({
+                ...prev,
+                windowValue: updatedWindowValue,
+            }));
         }
-    }, [formData.windowValue, formData.startTime, formData.endTime, formData.province]);
+    }, [
+        formData.windowValue,
+        formData.startTime,
+        formData.endTime,
+        formData.province,
+        CLTDGlassData,
+        climateData,
+        lmWallAndRoofData,
+        U_SCglassData,
+    ]);
 
     // qSolarWallGlass
     useEffect(() => {
         if (
-            formData.windowValue &&
-            formData.doorValue &&
-            formData.wallValue &&
-            formData.startTime != "" &&
-            formData.endTime != "" &&
-            formData.province != "" &&
-            formData.width != 0 &&
-            formData.depth != 0
-        ) {
-            formData.wallValue.map((item) => {
-                if (item.material === "Glass") {
-                    let CLFGlassData = [];
-                    let SHGFGlassDataAllMonth = [];
+            !formData.windowValue ||
+            !formData.wallValue ||
+            !formData.doorValue ||
+            !formData.startTime ||
+            !formData.endTime ||
+            !formData.province ||
+            formData.width === 0 ||
+            formData.depth === 0
+        ) return;
 
-                    const climatedt = getClimateData(climateData, formData.province);
-                    if (item?.haveShade) {
-                        SHGFGlassDataAllMonth = findSHGFtoShade(
-                            SHGFtoShadeData,
-                            item.directionName
-                        );
-                    } else {
-                        SHGFGlassDataAllMonth = interpolateSHGFNoShadeByLat(
-                            SHGFNoShadeData,
-                            Number(climatedt?.Latitude),
-                            item.directionName
-                        );
-                    }
-                    // console.log("SHGFGlassDataAllMonth: ", SHGFGlassDataAllMonth)
+        const climatedt = getClimateData(climateData, formData.province);
+        if (!climatedt) return;
 
-                    const monthsInRange = ["Apr", "May", "Jun", "Jul", "Aug"];
-                    const filteredSHGFGlassData = SHGFGlassDataAllMonth.filter((item) =>
-                        monthsInRange.includes(item.Month)
-                    );
+        const updatedWallValue = formData.wallValue.map((wall) => {
+            if (wall.material !== "Glass") return wall;
 
-                    // console.log("filteredSHGFGlassData: ", filteredSHGFGlassData)
+            let CLFGlassData = [];
+            let SHGFGlassDataAllMonth = [];
 
-                    if (item?.haveCurtain) {
-                        CLFGlassData = findGlassCLFwithShadingTimeRange(
-                            glassCLFwithShadingData,
-                            item.directionName,
-                            formData.startTime,
-                            formData.endTime
-                        );
-                    } else {
-                        CLFGlassData = findGlassCLFnoShadingTimeRange(
-                            glassCLFnoShadingData,
-                            item?.directionName ?? "",
-                            formData.startTime,
-                            formData.endTime
-                        );
-                    }
-                    // console.log("CLFGlassData: ", CLFGlassData)
+            if (wall.haveShade) {
+                SHGFGlassDataAllMonth = findSHGFtoShade(SHGFtoShadeData, wall.directionName);
+            } else {
+                SHGFGlassDataAllMonth = interpolateSHGFNoShadeByLat(
+                    SHGFNoShadeData,
+                    Number(climatedt.Latitude),
+                    wall.directionName
+                );
+            }
 
-                    const wallArea = item.wallArea;
-                    // console.log("wallArea: ", wallArea)
+            const monthsInRange = ["Apr", "May", "Jun", "Jul", "Aug"];
+            const filteredSHGFGlassData = SHGFGlassDataAllMonth.filter((d) =>
+                monthsInRange.includes(d.Month)
+            );
 
-                    const uValueGlass = findU_SCglass(U_SCglassData, item.glassType);
-                    // console.log(`SC: `, uValueGlass?.SC)
+            if (wall.haveCurtain) {
+                CLFGlassData = findGlassCLFwithShadingTimeRange(
+                    glassCLFwithShadingData,
+                    wall.directionName,
+                    formData.startTime,
+                    formData.endTime
+                );
+            } else {
+                CLFGlassData = findGlassCLFnoShadingTimeRange(
+                    glassCLFnoShadingData,
+                    wall.directionName,
+                    formData.startTime,
+                    formData.endTime
+                );
+            }
 
-                    const qSolarWallGlassByMonth = filteredSHGFGlassData.map((shgfRow) => {
-                        const month = shgfRow.Month;
+            const uValueGlass = findU_SCglass(U_SCglassData, wall.glassType);
+            const wallArea = wall.wallArea;
 
-                        // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
-                        const QSolarTime = CLFGlassData.map((clfgRow) => {
-                            const qSolarWallGlass =
-                                Number(clfgRow.CLF) *
-                                wallArea *
-                                Number(shgfRow.SHGF) *
-                                Number(uValueGlass?.SC);
+            const qSolarWallGlassByMonth = filteredSHGFGlassData.map((shgfRow) => {
+                const QSolarTime = CLFGlassData.map((clfgRow) => ({
+                    Hour: clfgRow.Hour,
+                    qSolarWallGlass:
+                        Number(clfgRow.CLF) * wallArea * Number(shgfRow.SHGF) * Number(uValueGlass?.SC),
+                }));
 
-                            return {
-                                Hour: clfgRow.Hour,
-                                qSolarWallGlass: qSolarWallGlass,
-                            };
-                        });
-
-                        return {
-                            Month: month,
-                            QSolarTime,
-                        };
-                    });
-
-                    // console.log("qSolarWallGlassByMonth: ", qSolarWallGlassByMonth);
-
-                    setFormData((prev) => {
-                        const updatedWallValue = prev.wallValue.map((wall) => {
-                            if (wall.directionName === item.directionName) {
-                                if (
-                                    JSON.stringify(wall.qSolarWallGlassByMonth) ===
-                                    JSON.stringify(qSolarWallGlassByMonth)
-                                ) {
-                                    return wall;
-                                }
-                                return {
-                                    ...wall,
-                                    qSolarWallGlassByMonth: qSolarWallGlassByMonth,
-                                };
-                            }
-                            return wall;
-                        });
-
-                        if (JSON.stringify(updatedWallValue) === JSON.stringify(prev.wallValue)) {
-                            return prev;
-                        }
-
-                        return {
-                            ...prev,
-                            wallValue: updatedWallValue,
-                        };
-                    });
-                }
+                return {
+                    Month: shgfRow.Month,
+                    QSolarTime,
+                };
             });
+
+            return {
+                ...wall,
+                qSolarWallGlassByMonth,
+            };
+        });
+
+        if (JSON.stringify(updatedWallValue) !== JSON.stringify(formData.wallValue)) {
+            setFormData((prev) => ({ ...prev, wallValue: updatedWallValue }));
         }
     }, [
         formData.windowValue,
@@ -1446,235 +1241,172 @@ function MainPage() {
         formData.province,
         formData.width,
         formData.depth,
+        SHGFtoShadeData,
+        SHGFNoShadeData,
+        glassCLFwithShadingData,
+        glassCLFnoShadingData,
+        U_SCglassData,
+        climateData,
     ]);
 
     // qSolarDoorGlass
     useEffect(() => {
         if (
-            formData.doorValue &&
-            formData.startTime != "" &&
-            formData.endTime != "" &&
-            formData.province != ""
-        ) {
-            formData.doorValue.map((item) => {
-                if (item.material === "Glass") {
-                    let CLFGlassData = [];
-                    let SHGFGlassDataAllMonth = [];
+            !formData.doorValue ||
+            !formData.startTime ||
+            !formData.endTime ||
+            !formData.province
+        ) return;
 
-                    const climatedt = getClimateData(climateData, formData.province);
-                    if (item?.haveShade) {
-                        SHGFGlassDataAllMonth = findSHGFtoShade(
-                            SHGFtoShadeData,
-                            item.directionName
-                        );
-                    } else {
-                        SHGFGlassDataAllMonth = interpolateSHGFNoShadeByLat(
-                            SHGFNoShadeData,
-                            Number(climatedt?.Latitude),
-                            item.directionName
-                        );
-                    }
-                    // console.log("SHGFGlassDataAllMonth: ", SHGFGlassDataAllMonth)
+        const climatedt = getClimateData(climateData, formData.province);
+        if (!climatedt) return;
 
-                    const monthsInRange = ["Apr", "May", "Jun", "Jul", "Aug"];
-                    const filteredSHGFGlassData = SHGFGlassDataAllMonth.filter((item) =>
-                        monthsInRange.includes(item.Month)
-                    );
+        const updatedDoorValue = formData.doorValue.map((door) => {
+            if (door.material !== "Glass") return door;
 
-                    // console.log("filteredSHGFGlassData: ", filteredSHGFGlassData)
+            let CLFGlassData = [];
+            let SHGFGlassDataAllMonth = [];
 
-                    if (item?.haveCurtain) {
-                        CLFGlassData = findGlassCLFwithShadingTimeRange(
-                            glassCLFwithShadingData,
-                            item.directionName,
-                            formData.startTime,
-                            formData.endTime
-                        );
-                    } else {
-                        CLFGlassData = findGlassCLFnoShadingTimeRange(
-                            glassCLFnoShadingData,
-                            item?.directionName ?? "",
-                            formData.startTime,
-                            formData.endTime
-                        );
-                    }
-                    // console.log("CLFGlassData: ", CLFGlassData)
+            if (door.haveShade) {
+                SHGFGlassDataAllMonth = findSHGFtoShade(SHGFtoShadeData, door.directionName);
+            } else {
+                SHGFGlassDataAllMonth = interpolateSHGFNoShadeByLat(
+                    SHGFNoShadeData,
+                    Number(climatedt.Latitude),
+                    door.directionName
+                );
+            }
 
-                    const wallArea = item.doorArea;
+            const monthsInRange = ["Apr", "May", "Jun", "Jul", "Aug"];
+            const filteredSHGFGlassData = SHGFGlassDataAllMonth.filter((d) =>
+                monthsInRange.includes(d.Month)
+            );
 
-                    const uValueGlass = findU_SCglass(U_SCglassData, item.glassType);
-                    // console.log(`uValueGlass: `, uValueGlass?.SC)
+            if (door.haveCurtain) {
+                CLFGlassData = findGlassCLFwithShadingTimeRange(
+                    glassCLFwithShadingData,
+                    door.directionName,
+                    formData.startTime,
+                    formData.endTime
+                );
+            } else {
+                CLFGlassData = findGlassCLFnoShadingTimeRange(
+                    glassCLFnoShadingData,
+                    door.directionName,
+                    formData.startTime,
+                    formData.endTime
+                );
+            }
 
-                    const qSolarDoorGlassByMonth = filteredSHGFGlassData.map((shgfRow) => {
-                        const month = shgfRow.Month;
+            const uValueGlass = findU_SCglass(U_SCglassData, door.glassType);
+            const doorArea = door.doorArea;
 
-                        // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
-                        const QSolarTime = CLFGlassData.map((clfgRow) => {
-                            const qSolarDoorGlass =
-                                Number(clfgRow.CLF) *
-                                wallArea *
-                                Number(shgfRow.SHGF) *
-                                Number(uValueGlass?.SC);
+            const qSolarDoorGlassByMonth = filteredSHGFGlassData.map((shgfRow) => ({
+                Month: shgfRow.Month,
+                QSolarTime: CLFGlassData.map((clfgRow) => ({
+                    Hour: clfgRow.Hour,
+                    qSolarDoorGlass: Number(clfgRow.CLF) * doorArea * Number(shgfRow.SHGF) * Number(uValueGlass?.SC),
+                })),
+            }));
 
-                            return {
-                                Hour: clfgRow.Hour,
-                                qSolarDoorGlass: qSolarDoorGlass,
-                            };
-                        });
+            return {
+                ...door,
+                qSolarDoorGlassByMonth,
+            };
+        });
 
-                        return {
-                            Month: month,
-                            QSolarTime,
-                        };
-                    });
-
-                    // console.log("qSolarDoorGlassByMonth: ", qSolarDoorGlassByMonth);
-
-                    setFormData((prev) => {
-                        const updatedDoorValue = prev.doorValue.map((door) => {
-                            if (door.directionName === item.directionName) {
-                                if (
-                                    JSON.stringify(door.qSolarDoorGlassByMonth) ===
-                                    JSON.stringify(qSolarDoorGlassByMonth)
-                                ) {
-                                    return door;
-                                }
-                                return {
-                                    ...door,
-                                    qSolarDoorGlassByMonth: qSolarDoorGlassByMonth,
-                                };
-                            }
-                            return door;
-                        });
-
-                        if (JSON.stringify(updatedDoorValue) === JSON.stringify(prev.doorValue)) {
-                            return prev;
-                        }
-
-                        return {
-                            ...prev,
-                            doorValue: updatedDoorValue,
-                        };
-                    });
-                }
-            });
+        if (JSON.stringify(updatedDoorValue) !== JSON.stringify(formData.doorValue)) {
+            setFormData((prev) => ({ ...prev, doorValue: updatedDoorValue }));
         }
-    }, [formData.doorValue, formData.startTime, formData.endTime, formData.province]);
+    }, [
+        formData.doorValue,
+        formData.startTime,
+        formData.endTime,
+        formData.province,
+        SHGFtoShadeData,
+        SHGFNoShadeData,
+        glassCLFwithShadingData,
+        glassCLFnoShadingData,
+        U_SCglassData,
+        climateData,
+    ]);
 
     // qSolarWindowGlass
     useEffect(() => {
-        if (
-            formData.windowValue &&
-            formData.startTime != "" &&
-            formData.endTime != "" &&
-            formData.province != ""
-        ) {
-            formData.windowValue.map((item) => {
-                if (item.material === "Glass") {
-                    let CLFGlassData = [];
-                    let SHGFGlassDataAllMonth = [];
+        if (!formData.windowValue || !formData.startTime || !formData.endTime || !formData.province) return;
 
-                    const climatedt = getClimateData(climateData, formData.province);
-                    if (item?.haveShade) {
-                        SHGFGlassDataAllMonth = findSHGFtoShade(
-                            SHGFtoShadeData,
-                            item.directionName
-                        );
-                    } else {
-                        SHGFGlassDataAllMonth = interpolateSHGFNoShadeByLat(
-                            SHGFNoShadeData,
-                            Number(climatedt?.Latitude),
-                            item.directionName
-                        );
-                    }
-                    // console.log("SHGFGlassDataAllMonth: ", SHGFGlassDataAllMonth)
+        const climatedt = getClimateData(climateData, formData.province);
+        if (!climatedt) return;
 
-                    const monthsInRange = ["Apr", "May", "Jun", "Jul", "Aug"];
-                    const filteredSHGFGlassData = SHGFGlassDataAllMonth.filter((item) =>
-                        monthsInRange.includes(item.Month)
-                    );
+        const updatedWindowValue = formData.windowValue.map((window) => {
+            if (window.material !== "Glass") return window;
 
-                    // console.log("filteredSHGFGlassData: ", filteredSHGFGlassData)
+            let CLFGlassData = [];
+            let SHGFGlassDataAllMonth = [];
 
-                    if (item?.haveCurtain) {
-                        CLFGlassData = findGlassCLFwithShadingTimeRange(
-                            glassCLFwithShadingData,
-                            item.directionName,
-                            formData.startTime,
-                            formData.endTime
-                        );
-                    } else {
-                        CLFGlassData = findGlassCLFnoShadingTimeRange(
-                            glassCLFnoShadingData,
-                            item?.directionName ?? "",
-                            formData.startTime,
-                            formData.endTime
-                        );
-                    }
-                    // console.log("CLFGlassData: ", CLFGlassData)
+            if (window.haveShade) {
+                SHGFGlassDataAllMonth = findSHGFtoShade(SHGFtoShadeData, window.directionName);
+            } else {
+                SHGFGlassDataAllMonth = interpolateSHGFNoShadeByLat(
+                    SHGFNoShadeData,
+                    Number(climatedt.Latitude),
+                    window.directionName
+                );
+            }
 
-                    const wallArea = item.windowArea;
+            const monthsInRange = ["Apr", "May", "Jun", "Jul", "Aug"];
+            const filteredSHGFGlassData = SHGFGlassDataAllMonth.filter((d) =>
+                monthsInRange.includes(d.Month)
+            );
 
-                    const uValueGlass = findU_SCglass(U_SCglassData, item.glassType);
-                    // console.log(`SC: `, uValueGlass?.SC)
+            if (window.haveCurtain) {
+                CLFGlassData = findGlassCLFwithShadingTimeRange(
+                    glassCLFwithShadingData,
+                    window.directionName,
+                    formData.startTime,
+                    formData.endTime
+                );
+            } else {
+                CLFGlassData = findGlassCLFnoShadingTimeRange(
+                    glassCLFnoShadingData,
+                    window.directionName,
+                    formData.startTime,
+                    formData.endTime
+                );
+            }
 
-                    const qSolarWindowGlassByMonth = filteredSHGFGlassData.map((shgfRow) => {
-                        const month = shgfRow.Month;
+            const uValueGlass = findU_SCglass(U_SCglassData, window.glassType);
+            const windowArea = window.windowArea;
 
-                        // สำหรับเดือนนี้ เอา ucltRoofData ทั้งหมดมา map
-                        const QSolarTime = CLFGlassData.map((clfgRow) => {
-                            const qSolarWindowGlass =
-                                Number(clfgRow.CLF) *
-                                wallArea *
-                                Number(shgfRow.SHGF) *
-                                Number(uValueGlass?.SC);
+            const qSolarWindowGlassByMonth = filteredSHGFGlassData.map((shgfRow) => ({
+                Month: shgfRow.Month,
+                QSolarTime: CLFGlassData.map((clfgRow) => ({
+                    Hour: clfgRow.Hour,
+                    qSolarWindowGlass: Number(clfgRow.CLF) * windowArea * Number(shgfRow.SHGF) * Number(uValueGlass?.SC),
+                })),
+            }));
 
-                            return {
-                                Hour: clfgRow.Hour,
-                                qSolarWindowGlass: qSolarWindowGlass,
-                            };
-                        });
+            return {
+                ...window,
+                qSolarWindowGlassByMonth,
+            };
+        });
 
-                        return {
-                            Month: month,
-                            QSolarTime,
-                        };
-                    });
-
-                    // console.log("qSolarWindowGlassByMonth: ", qSolarWindowGlassByMonth);
-
-                    setFormData((prev) => {
-                        const updatedWindowValue = prev.windowValue.map((window) => {
-                            if (window.directionName === item.directionName) {
-                                if (
-                                    JSON.stringify(window.qSolarWindowGlassByMonth) ===
-                                    JSON.stringify(qSolarWindowGlassByMonth)
-                                ) {
-                                    return window;
-                                }
-                                return {
-                                    ...window,
-                                    qSolarWindowGlassByMonth: qSolarWindowGlassByMonth,
-                                };
-                            }
-                            return window;
-                        });
-
-                        if (
-                            JSON.stringify(updatedWindowValue) === JSON.stringify(prev.windowValue)
-                        ) {
-                            return prev;
-                        }
-
-                        return {
-                            ...prev,
-                            windowValue: updatedWindowValue,
-                        };
-                    });
-                }
-            });
+        if (JSON.stringify(updatedWindowValue) !== JSON.stringify(formData.windowValue)) {
+            setFormData((prev) => ({ ...prev, windowValue: updatedWindowValue }));
         }
-    }, [formData.windowValue, formData.startTime, formData.endTime, formData.province]);
+    }, [
+        formData.windowValue,
+        formData.startTime,
+        formData.endTime,
+        formData.province,
+        SHGFtoShadeData,
+        SHGFNoShadeData,
+        glassCLFwithShadingData,
+        glassCLFnoShadingData,
+        U_SCglassData,
+        climateData,
+    ]);
 
     // qIn
     useEffect(() => {
@@ -1748,7 +1480,47 @@ function MainPage() {
         formData.depth,
         formData.height,
         formData.province,
+        UCLTDWallData,
+        UfloorInData,
+        climateData,
     ]);
+
+    useEffect(() => {
+        if (
+            formData.doorValue.length > 0 &&
+            formData.windowValue.length > 0 &&
+            formData.wallValue.length > 0
+        ) {
+            const combinedWall = combineGlassData(
+                formData.wallValue,
+                formData.doorValue,
+                formData.windowValue
+            );
+
+            if (JSON.stringify(combinedWall) !== JSON.stringify(formData.wallValue)) {
+                setFormData((prev) => ({
+                    ...prev,
+                    wallValue: combinedWall,
+                }));
+            }
+        }
+    }, [formData.doorValue, formData.windowValue, formData.wallValue]);
+
+    // Recommended BTU
+    useEffect(() => {
+        if (selectedOption.selectedAirConditionerType && BTUAirData.length > 0) {
+            const targetBTU = calculateVariable.qTotalAll * 3.412;
+            const result = getClosestBTUAirData(
+                BTUAirData,
+                selectedOption.selectedAirConditionerType,
+                targetBTU
+            );
+            setCalculateVariable((prev) => ({
+                ...prev,
+                recommendedBTU: Number(result?.BTU),
+            }));
+        }
+    }, [selectedOption.selectedAirConditionerType, BTUAirData, calculateVariable.qTotalAll]);
 
     function combineGlassData(
         wallValue: WallValue[],
@@ -2012,27 +1784,15 @@ function MainPage() {
         return { totalQLoadByMonth, maxRecord };
     }
 
-    useEffect(() => {
-        if (
-            formData.doorValue.length > 0 &&
-            formData.windowValue.length > 0 &&
-            formData.wallValue.length > 0
-        ) {
-            const combinedWall = combineGlassData(
-                formData.wallValue,
-                formData.doorValue,
-                formData.windowValue
-            );
+    function calculateTotalQIn(formData: FormDataProps) {
+        const noAirDirectionValue = formData.noAirDirectionValue;
 
-            // เช็คว่าเหมือนเดิมหรือไม่ ถ้าเหมือนไม่ต้องอัพเดต
-            if (JSON.stringify(combinedWall) !== JSON.stringify(formData.wallValue)) {
-                setFormData((prev) => ({
-                    ...prev,
-                    wallValue: combinedWall,
-                }));
-            }
-        }
-    }, [formData.doorValue, formData.windowValue, formData.wallValue]);
+        const totalQIn = noAirDirectionValue.reduce((sum, item) => {
+            return sum + (item.qIn ?? 0);
+        }, 0);
+
+        return { totalQIn };
+    }
 
     const handleClickCalculateAll = () => {
         const { totalQGlassByMonth, totalQSolarByMonth } = calculateTotalGlass(formData);
@@ -2043,12 +1803,14 @@ function MainPage() {
             totalQGlassByMonth,
             totalQSolarByMonth
         );
+        const { totalQIn } = calculateTotalQIn(formData)
 
         console.log("totalQGlassByMonth: ", totalQGlassByMonth);
         console.log("totalQSolarByMonth: ", totalQSolarByMonth);
         console.log("totalQWallByMonth: ", totalQWallByMonth);
         console.log("totalQLoadByMonth: ", totalQLoadByMonth);
         console.log("maxRecord: ", maxRecord);
+        console.log("totalQIn: ", totalQIn);
 
         setCalculateVariable((prev) => ({
             ...prev,
@@ -2056,37 +1818,32 @@ function MainPage() {
             totalQSolarByMonth,
             totalQWallByMonth,
             totalQLoadByMonth,
-            maxRecord: maxRecord ?? []
+            maxRecord: maxRecord ?? [],
+            totalQIn
         }))
-
-        // setFormData(prev => {
-        //     const { totalQGlassByMonth, totalQSolarByMonth } = calculateTotalGlass(prev);
-        //     const { totalQWallByMonth } = calculateTotalWall(prev);
-        //     const { totalQLoadByMonth, maxRecord } = calculateTotalLoad(
-        //         prev.roofValue,
-        //         totalQWallByMonth,
-        //         totalQGlassByMonth,
-        //         totalQSolarByMonth
-        //     );
-
-        //     console.log("totalQGlassByMonth: ", totalQGlassByMonth);
-        //     console.log("totalQSolarByMonth: ", totalQSolarByMonth);
-        //     console.log("totalQWallByMonth: ", totalQWallByMonth);
-        //     console.log("totalQLoadByMonth: ", totalQLoadByMonth);
-        //     console.log("maxRecord: ", maxRecord);
-
-        //     // ✅ อัปเดตทีเดียว
-        //     return {
-        //         ...prev,
-        //         totalQGlassByMonth,
-        //         totalQSolarByMonth,
-        //         totalQWallByMonth,
-        //         totalQLoadByMonth,
-        //         maxRecord
-        //     };
-        // });
     };
 
+    const handleClickCalculateQTotalAll = () => {
+        console.log("qLight:", calculateVariable.qLight);
+        console.log("qPeople:", calculateVariable.qPeople);
+        console.log("qEquipmentSum:", calculateVariable.qEquipmentSum);
+        console.log("qInfiltration:", calculateVariable.qInfiltration);
+        console.log("maxRecord.qTotal:", calculateVariable.maxRecord?.qTotal);
+        console.log("totalQIn:", calculateVariable.totalQIn);
+
+        const sum = (
+            calculateVariable.qLight +
+            calculateVariable.qPeople +
+            calculateVariable.qEquipmentSum +
+            calculateVariable.qInfiltration +
+            calculateVariable.maxRecord.qTotal +
+            calculateVariable.totalQIn
+        )
+
+        console.log("sum:", sum);
+
+        setCalculateVariable((prev) => ({ ...prev, qTotalAll: sum }))
+    }
 
     const airConditionerTypes = [
         { id: 1, title: "Wall Type", image: "/images/option/wall_type.png" },
@@ -2098,7 +1855,6 @@ function MainPage() {
         { id: 3, title: "Cassette Type", image: "/images/option/cassette_type.png" },
     ];
 
-    // @ts-ignore
     const airConditionerTypeImageShow = [
         { id: 1, title: "Wall Type", image: "./images/option/wall_type_show.png" },
         {
@@ -2159,20 +1915,36 @@ function MainPage() {
         };
     });
 
-    const filterAirConditionerTypes = airConditionerTypes.filter(() => {
-        // if (formData.ceilingAreaId[0] === "3") {
-        //     return String(item.id) === "1";
-        // } else if (formData.ceilingAreaId[0] === "2") {
-        //     return String(item.id) !== "3";
-        // } else {
-        //     return item;
-        // }
+    const filterAirConditionerTypes = airConditionerTypes.filter((ac) => {
+        const ceilingHeight = formData.ceilingHeight; // "Low", "Middle", "High", "OverHigh"
+        const ceilingSlot = formData.ceiling; // "HaveCeilinggreaterthan", "HaveCeilinglessthan", "NoCeiling"
+
+        switch (ac.title) {
+            case "Wall Type":
+                // Wall Type: เพดาน ต่ำ หรือ กลาง
+                return ceilingHeight === "Low" || ceilingHeight === "Middle";
+
+            case "Ceiling Suspended Type":
+                // Ceiling Suspended: เพดาน กลาง, สูง, สูงมาก
+                return ceilingHeight === "Middle" || ceilingHeight === "High" || ceilingHeight === "OverHigh";
+
+            case "Cassette Type":
+                // Cassette: เพดาน กลาง หรือ สูง และช่องฝ้า >30 cm
+                const hasEnoughSlot = ceilingSlot === "HaveCeilinggreaterthan";
+                return (ceilingHeight === "Middle" || ceilingHeight === "High") && hasEnoughSlot;
+
+            default:
+                return false;
+        }
     });
 
     return (
         <Box className="main-page-container">
             <Button onClick={handleClickCalculateAll}>
                 Calculate
+            </Button>
+            <Button onClick={handleClickCalculateQTotalAll}>
+                Calculate All
             </Button>
             <Box
                 width={"100%"}
@@ -2428,7 +2200,7 @@ function MainPage() {
                                                                     มีมากกว่า 30 cm
                                                                 </MenuItem>
                                                                 <MenuItem value={"NoCeiling"}>
-                                                                    ไม่มี
+                                                                    ไม่มีฝ้า
                                                                 </MenuItem>
                                                             </Select>
                                                         </FormControl>
@@ -2456,12 +2228,14 @@ function MainPage() {
                                                                 <MenuItem value={"High"}>
                                                                     สูง (&gt;3)
                                                                 </MenuItem>
+                                                                <MenuItem value={"OverHigh"}>
+                                                                    สูงมาก (&gt;4)
+                                                                </MenuItem>
                                                             </Select>
                                                         </FormControl>
                                                     </Field.Root>
                                                 </GridItem>
                                             </Grid>
-
                                         </GridItem>
 
                                         <GridItem colSpan={1}>
@@ -4849,6 +4623,7 @@ function MainPage() {
                     <Tabs.Content value={"three"}>
                         <AirConditionerSelector
                             filterAirConditionerTypes={filterAirConditionerTypes}
+                            onChange={setSelectedOption}
                         />
                     </Tabs.Content>
                     <Tabs.Content value={"four"}>
@@ -4874,7 +4649,10 @@ function MainPage() {
                                                             ผลการคำนวณได้เท่ากับ
                                                         </Table.Cell>
                                                         <Table.Cell className="strong-text">
-                                                            11,590
+                                                            {(calculateVariable.qTotalAll * 3.412).toLocaleString("en-US", {
+                                                                minimumFractionDigits: 2,
+                                                                maximumFractionDigits: 2,
+                                                            })}
                                                         </Table.Cell>
                                                         <Table.Cell className="strong-text-blue">
                                                             BTU
@@ -4886,7 +4664,10 @@ function MainPage() {
                                                             แนะนำติดตั้งขนาด
                                                         </Table.Cell>
                                                         <Table.Cell className="strong-text">
-                                                            12,000
+                                                            {calculateVariable.recommendedBTU.toLocaleString("en-US", {
+                                                                minimumFractionDigits: 2,
+                                                                maximumFractionDigits: 2,
+                                                            })}
                                                         </Table.Cell>
                                                         <Table.Cell className="strong-text-blue">
                                                             BTU
@@ -4911,13 +4692,13 @@ function MainPage() {
                                                 <Text className="strong-text-blue">
                                                     ประเภทแอร์ที่เลือก :
                                                 </Text>
-                                                {/* <Text className="strong-text">{airConditionerTypeImageShow[(selectedOption.airConditionerTypeID == 0 ? 0 : selectedOption.airConditionerTypeID - 1)].title}</Text> */}
+                                                <Text className="strong-text">{airConditionerTypeImageShow.find((item)=> item.title === selectedOption.selectedAirConditionerType)?.title}</Text>
                                             </Box>
-                                            {/* <Image
+                                            <Image
                                                 width="100%"
-                                                src={airConditionerTypeImageShow[(selectedOption.airConditionerTypeID == 0 ? 0 : selectedOption.airConditionerTypeID - 1)].image}
+                                                src={`${BASE_URL}${airConditionerTypeImageShow.find((item)=> item.title === selectedOption.selectedAirConditionerType)?.image}`}
                                                 borderRadius={10}
-                                            /> */}
+                                            />
                                         </GridItem>
                                     </Grid>
                                 </GridItem>
