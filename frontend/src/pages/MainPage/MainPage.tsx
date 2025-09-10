@@ -285,7 +285,7 @@ function MainPage() {
         equipment: null,
     });
 
-    const [tabValue, setTabValue] = useState("two");
+    const [tabValue, setTabValue] = useState("one");
 
     const [wattLightData, setWattLightData] = useState<WattLightRow[]>([]);
     const [occupancyHeatGainData, setOccupancyHeatGainData] = useState<OccupancyHeatGainRow[]>([]);
