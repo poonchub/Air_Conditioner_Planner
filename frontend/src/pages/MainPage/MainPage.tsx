@@ -67,6 +67,7 @@ import type { UfloorInRow } from "@/types/UfloorInRow";
 import { findUfloorIn, loadUfloorInData } from "@/data/UfloorInService";
 import type { BTUAirRow } from "@/types/BTUAirRow";
 import { getClosestBTUAirData, loadBTUAirRowData } from "@/data/BTUAirService";
+import InstallationPositionSelector from "@/components/InstallationPositionSelector/InstallationPositionSelector";
 
 export const BASE_URL = import.meta.env.BASE_URL;
 
@@ -113,7 +114,7 @@ type WindowValue = {
     qSolarWindowGlassByMonth: any[];
 };
 
-type WallValue = {
+export type WallValue = {
     directionName: string;
     position: string;
     material: string;
@@ -129,6 +130,9 @@ type WallValue = {
     qSolarWallGlassByMonth: any[];
     qSolarGlassByMonth?: any[];
     qGlassByMonth?: any[];
+    wallCondition: string,
+    hasOpenSpace: boolean,
+    wallScore?: WallScore
 };
 
 type NoAirDirectionValue = {
@@ -153,7 +157,16 @@ type RoofValue = {
     }[];
 };
 
-type FormDataProps = {
+export type WallScore = {
+    solarExposure: number;       // 1. ผนังร้อน/แดด
+    furnitureAndOccupants: number; // 2. เฟอร์นิเจอร์/ผู้ใช้งาน
+    airDistribution: number;     // 3. การกระจายลม
+    doorsAndWindows: number;     // 4. ประตู/หน้าต่าง
+    pipingLayout: number;        // 5. การเดินท่อ
+    totalScore: number;
+};
+
+export type FormDataProps = {
     province: string;
     people: number;
     width: number;
@@ -175,9 +188,10 @@ type FormDataProps = {
     wallValue: WallValue[];
     floorValue: FloorValue;
     roofValue: RoofValue;
+    furniturePosition: string[];
 };
 
-type CalculateVariableProps = {
+export type CalculateVariableProps = {
     qLight: number;
     qPeople: number;
     qEquipmentSum: number;
@@ -196,6 +210,7 @@ type CalculateVariableProps = {
     airConditionerType: string;
     recommendedBTU: number;
     electricityCost: any;
+    wallScoreAll: WallValue[]
 };
 
 type HourData = {
@@ -262,6 +277,7 @@ function MainPage() {
         wallValue: [],
         floorValue: { uFloor: 0, qFloor: 0 },
         roofValue: { qRoofByMonth: [] },
+        furniturePosition: [],
     });
 
     // @ts-ignore
@@ -277,6 +293,7 @@ function MainPage() {
         qTotalAll: 0,
         recommendedBTU: 0,
         electricityCost: 0,
+        wallScoreAll: []
     });
 
     const [dataFind, setDataFind] = useState<DataFindProps>({
@@ -450,6 +467,8 @@ function MainPage() {
                             qWallByMonth: [],
                             qWallGlassByMonth: [],
                             qSolarWallGlassByMonth: [],
+                            wallCondition: "",
+                            hasOpenSpace: true
                         },
                     ],
                 };
@@ -475,6 +494,8 @@ function MainPage() {
                         qWallByMonth: [],
                         qWallGlassByMonth: [],
                         qSolarWallGlassByMonth: [],
+                        wallCondition: "",
+                        hasOpenSpace: true
                     });
                 }
             });
@@ -714,8 +735,8 @@ function MainPage() {
                     wall.position === "Width"
                         ? prev.width * prev.height
                         : wall.position === "Depth"
-                        ? prev.depth * prev.height
-                        : 0;
+                            ? prev.depth * prev.height
+                            : 0;
 
                 const glassAreaDoor = matchedDoors.reduce((sum, door) => {
                     if (door.material === "Glass") {
@@ -1700,7 +1721,7 @@ function MainPage() {
         return { totalQIn };
     }
 
-    const handleClickCalculateAll = () => {
+    const handleClickCalculateAll = async () => {
         const { totalQGlassByMonth, totalQSolarByMonth } = calculateTotalGlass(formData);
         const { totalQWallByMonth } = calculateTotalWall(formData);
         const { totalQLoadByMonth, maxRecord } = calculateTotalLoad(
@@ -1729,7 +1750,7 @@ function MainPage() {
         }));
     };
 
-    const handleClickCalculateQTotalAll = () => {
+    const handleClickCalculateQTotalAll = async () => {
         console.log("qLight:", calculateVariable.qLight);
         console.log("qPeople:", calculateVariable.qPeople);
         console.log("qEquipmentSum:", calculateVariable.qEquipmentSum);
@@ -1742,7 +1763,7 @@ function MainPage() {
             calculateVariable.qPeople +
             calculateVariable.qEquipmentSum +
             calculateVariable.qInfiltration +
-            calculateVariable.maxRecord.qTotal +
+            (calculateVariable.maxRecord.qTotal || 0) +
             calculateVariable.totalQIn;
 
         console.log("Sum BTU:", sum);
@@ -1755,6 +1776,11 @@ function MainPage() {
             qTotalAll: sum,
             electricityCost: electricityCost,
         }));
+
+        calculateVariable.wallScoreAll.map((wallScore) => {
+            console.log(`Direction: ${wallScore.directionName}, totalScore: ${wallScore.wallScore?.totalScore}`)
+        })
+
     };
 
     // คำนวณค่าไฟฟ้า สำหรับที่พักอาศัย (user_type = 1)
@@ -1901,14 +1927,36 @@ function MainPage() {
         };
     };
 
+    const click = async () => {
+        await handleClickCalculateAll()
+        await handleClickCalculateQTotalAll()
+    }
+
+    useEffect(()=>{
+        if (selectedOption.buildingType !== "Home") {
+            click()
+        }
+    }, [selectedOption.businessSize])
+
     const airConditionerTypes = [
-        { id: 1, title: "Wall Type", image: "/images/option/wall_type.png" },
+        {
+            id: 1,
+            title: "Wall Type",
+            image: "/images/option/wall_type.png",
+            description: "หลีกเลี่ยงการติดตั้งเหนือบานประตูและฝั่งตรงข้ามประตู หลีกเลี่ยงการติดใกล้หน้าต่างที่รับแสงแดดโดยตรง ควรติดตั้งห่างจากฝ้าเพดานและผนังด้านข้างผนังอย่างน้อย 10 ซม. ด้านหน้าตัวเครื่องควรโล่งอย่างน้อย 1.5–2 ม."
+        },
         {
             id: 2,
             title: "Ceiling Suspended Type",
             image: "/images/option/ceiling_suspended_type.png",
+            description: "หลีกเลี่ยงการติดตั้งเหนือบานประตูและฝั่งตรงข้ามประตู หลีกเลี่ยงติดใกล้หน้าต่างที่รับแสงแดดโดยตรง ควรติดตั้งห่างจากฝ้าเพดานอย่างน้อย 10 ซม. ควรเว้นห่างจากผนังด้านข้างอย่างน้อย 30 ซม. ด้านหน้าตัวเครื่องควรโล่งอย่างน้อย 1.5–2 ม."
         },
-        { id: 3, title: "Cassette Type", image: "/images/option/cassette_type.png" },
+        {
+            id: 3,
+            title: "Cassette Type",
+            image: "/images/option/cassette_type.png",
+            description: "Cassette Type	ด้านข้างควรห่างจากผนังหรือสิ่งกีดขวางอย่างน้อย 0.5 ม. [หลีกเลี่ยงการติดตั้งใกล้คานหรือจุดที่บังทิศทางลม]"
+        },
     ];
 
     const airConditionerTypeImageShow = [
@@ -1925,15 +1973,21 @@ function MainPage() {
 
     const handleClickNext = () => {
         const currentIndex = steps.indexOf(tabValue);
+        const value = steps[currentIndex + (selectedOption.selectedAirConditionerType !== "Cassette Type" ? 1 : 2)]
         if (currentIndex < steps.length - 1) {
-            setTabValue(steps[currentIndex + 1]);
+            setTabValue(value);
         }
+        if (value === "four" && selectedOption.buildingType === "Home") {
+            click()
+        }
+        
     };
 
     const handleClickPrev = () => {
         const currentIndex = steps.indexOf(tabValue);
+        const value = steps[currentIndex - (selectedOption.selectedAirConditionerType !== "Cassette Type" ? 1 : 2)]
         if (currentIndex > 0) {
-            setTabValue(steps[currentIndex - 1]);
+            setTabValue(value);
         }
     };
 
@@ -1994,10 +2048,14 @@ function MainPage() {
         }
     });
 
+    const sortedTotalScore = [...calculateVariable.wallScoreAll].sort(
+        (a, b) => (b?.wallScore?.totalScore ?? 0) - (a?.wallScore?.totalScore ?? 0)
+    );
+
     return (
         <Box className="main-page-container">
-            <Button onClick={handleClickCalculateAll}>Calculate</Button>
-            <Button onClick={handleClickCalculateQTotalAll}>Calculate All</Button>
+            {/* <Button onClick={handleClickCalculateAll}>Calculate</Button>
+            <Button onClick={handleClickCalculateQTotalAll}>Calculate All</Button> */}
             <Box
                 width={"100%"}
                 padding={"5rem 2rem"}
@@ -2028,10 +2086,13 @@ function MainPage() {
                             <AirVent />
                             ประเภทเครื่องปรับอากาศ
                         </Tabs.Trigger>
-                        <Tabs.Trigger value="four" transition={"all ease 0.5s"}>
-                            <MapPin />
-                            ตำแหน่งติดตั้ง
-                        </Tabs.Trigger>
+                        {
+                            selectedOption.selectedAirConditionerType !== "Cassette Type" &&
+                            <Tabs.Trigger value="four" transition={"all ease 0.5s"}>
+                                <MapPin />
+                                ตำแหน่งติดตั้ง
+                            </Tabs.Trigger>
+                        }
                         <Tabs.Trigger value="five" transition={"all ease 0.5s"}>
                             <FileText />
                             แสดงผล
@@ -2054,6 +2115,7 @@ function MainPage() {
                                                 <Field.Label>จังหวัด (Province)</Field.Label>
                                                 <FormControl fullWidth>
                                                     <Select
+                                                        // error
                                                         displayEmpty
                                                         value={formData.province}
                                                         onChange={(e) =>
@@ -2063,9 +2125,6 @@ function MainPage() {
                                                             }))
                                                         }
                                                     >
-                                                        <MenuItem value="">
-                                                            <em>None</em>
-                                                        </MenuItem>
                                                         {climateData.map((item, index) => {
                                                             return (
                                                                 <MenuItem key={index} value={item.Province}>
@@ -2157,9 +2216,6 @@ function MainPage() {
                                                                     }))
                                                                 }
                                                             >
-                                                                <MenuItem value="">
-                                                                    <em>None</em>
-                                                                </MenuItem>
                                                                 {hourOptions.map((item, index) => {
                                                                     return (
                                                                         <MenuItem key={index} value={item.value}>
@@ -2184,9 +2240,6 @@ function MainPage() {
                                                                     }))
                                                                 }
                                                             >
-                                                                <MenuItem value="">
-                                                                    <em>None</em>
-                                                                </MenuItem>
                                                                 {hourOptions.map((item, index) => {
                                                                     return (
                                                                         <MenuItem key={index} value={item.value}>
@@ -2217,9 +2270,6 @@ function MainPage() {
                                                                     }))
                                                                 }
                                                             >
-                                                                <MenuItem value="">
-                                                                    <em>None</em>
-                                                                </MenuItem>
                                                                 <MenuItem value={"HaveCeilinglessthan"}>
                                                                     มีน้อยกว่า 30 cm
                                                                 </MenuItem>
@@ -2245,9 +2295,6 @@ function MainPage() {
                                                                     }))
                                                                 }
                                                             >
-                                                                <MenuItem value="">
-                                                                    <em>None</em>
-                                                                </MenuItem>
                                                                 <MenuItem value={"Low"}>ต่ำ (2-2.5)</MenuItem>
                                                                 <MenuItem value={"Middle"}>กลาง (2.5-3)</MenuItem>
                                                                 <MenuItem value={"High"}>สูง (&gt;3)</MenuItem>
@@ -2273,9 +2320,6 @@ function MainPage() {
                                                             }))
                                                         }
                                                     >
-                                                        <MenuItem value="">
-                                                            <em>None</em>
-                                                        </MenuItem>
                                                         <MenuItem value={"Single"}>อาคารชั้นเดียว</MenuItem>
                                                         <MenuItem value={"Multi"}>อาคารหลายชั้น</MenuItem>
                                                     </Select>
@@ -2298,9 +2342,6 @@ function MainPage() {
                                                                 }))
                                                             }
                                                         >
-                                                            <MenuItem value="">
-                                                                <em>None</em>
-                                                            </MenuItem>
                                                             <MenuItem value="Top">ชั้นบนสุด</MenuItem>
                                                             <MenuItem value="Middle">ระหว่างชั้น</MenuItem>
                                                             <MenuItem value="Bottom">ชั้นล่างสุด</MenuItem>
@@ -2319,7 +2360,7 @@ function MainPage() {
                                             <Field.Root>
                                                 <Field.Label>ผนัง (wall)</Field.Label>
                                                 <Field.Label>
-                                                    ระบุทิศผนังที่โดนแดดและไม่ติดกับห้องอื่น (เลือกได้มากกว่า1)
+                                                    ระบุทิศผนังภายนอกหรือผนังด้านที่ไม่อยู่ในอาคาร (เลือกได้มากกว่า1)
                                                 </Field.Label>
                                                 <FormControl sx={{ width: "100%" }}>
                                                     <Select
@@ -2441,9 +2482,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value="Width">
                                                                                     ด้านกว้าง
                                                                                 </MenuItem>
@@ -2477,9 +2515,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value="BrickPlaster">
                                                                                     ผนังอิฐฉาบปูน
                                                                                 </MenuItem>
@@ -2518,9 +2553,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={"SingleGlazing"}>
                                                                                     กระจกใสธรรมดา
                                                                                 </MenuItem>
@@ -2559,9 +2591,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={"true"}>มี</MenuItem>
                                                                                 <MenuItem value={"false"}>
                                                                                     ไม่มี
@@ -2595,9 +2624,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={"true"}>มี</MenuItem>
                                                                                 <MenuItem value={"false"}>
                                                                                     ไม่มี
@@ -2631,9 +2657,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value={0}>
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={0.65}>
                                                                                     สีสว่าง
                                                                                 </MenuItem>
@@ -2658,7 +2681,7 @@ function MainPage() {
                                             <Field.Root>
                                                 <Field.Label>สภาพแวดล้อมภายในอาคาร</Field.Label>
                                                 <Field.Label>
-                                                    ระบุด้านของห้องที่ไม่ได้ติดตั้งเครื่องปรับอากาศ
+                                                    ระบุอีกฝั่งของผนังที่ไม่ได้ติดตั้งเครื่องวปรับอากาศ
                                                     (เฉพาะผนังที่ติดกับห้องอื่น และเลือกได้มากกว่า1)
                                                 </Field.Label>
                                                 <FormControl sx={{ width: "100%" }}>
@@ -2785,9 +2808,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value="Width">
                                                                                     ด้านกว้าง
                                                                                 </MenuItem>
@@ -2826,9 +2846,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value="BrickPlaster">
                                                                                     ผนังอิฐฉาบปูน
                                                                                 </MenuItem>
@@ -2868,9 +2885,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={"SingleGlazing"}>
                                                                                     กระจกใสธรรมดา
                                                                                 </MenuItem>
@@ -2915,9 +2929,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={"true"}>มี</MenuItem>
                                                                                 <MenuItem value={"false"}>
                                                                                     ไม่มี
@@ -2957,9 +2968,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={"true"}>มี</MenuItem>
                                                                                 <MenuItem value={"false"}>
                                                                                     ไม่มี
@@ -3016,9 +3024,6 @@ function MainPage() {
                                                                             }))
                                                                         }
                                                                     >
-                                                                        <MenuItem value="">
-                                                                            <em>None</em>
-                                                                        </MenuItem>
                                                                         <MenuItem value={"Concrete"}>
                                                                             หลังคาคอนกรีต
                                                                         </MenuItem>
@@ -3043,9 +3048,6 @@ function MainPage() {
                                                                             }))
                                                                         }
                                                                     >
-                                                                        <MenuItem value={0}>
-                                                                            <em>None</em>
-                                                                        </MenuItem>
                                                                         <MenuItem value={0.5}>สีสว่าง</MenuItem>
                                                                         <MenuItem value={1}>สีเข้ม</MenuItem>
                                                                     </Select>
@@ -3111,9 +3113,6 @@ function MainPage() {
                                                                                 }));
                                                                             }}
                                                                         >
-                                                                            <MenuItem value={0}>
-                                                                                <em>None</em>
-                                                                            </MenuItem>
                                                                             <MenuItem value={0.92}>มี</MenuItem>
                                                                             <MenuItem value={3.8}>ไม่มี</MenuItem>
                                                                         </Select>
@@ -3255,9 +3254,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 {doorTypeData.map((doortype, index) => {
                                                                                     return (
                                                                                         <MenuItem
@@ -3266,7 +3262,7 @@ function MainPage() {
                                                                                         >
                                                                                             {
                                                                                                 doorTypeLabelMap[
-                                                                                                    doortype.DoorType
+                                                                                                doortype.DoorType
                                                                                                 ]
                                                                                             }
                                                                                         </MenuItem>
@@ -3299,9 +3295,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={"Glass"}>
                                                                                     กระจก
                                                                                 </MenuItem>
@@ -3336,9 +3329,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={"SingleGlazing"}>
                                                                                     กระจกใสธรรมดา
                                                                                 </MenuItem>
@@ -3377,9 +3367,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={"true"}>มี</MenuItem>
                                                                                 <MenuItem value={"false"}>
                                                                                     ไม่มี
@@ -3413,9 +3400,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={"true"}>มี</MenuItem>
                                                                                 <MenuItem value={"false"}>
                                                                                     ไม่มี
@@ -3588,9 +3572,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 {windowTypeData.map(
                                                                                     (windowtype, index) => {
                                                                                         return (
@@ -3602,8 +3583,8 @@ function MainPage() {
                                                                                             >
                                                                                                 {
                                                                                                     windowTypeLabelMap[
-                                                                                                        windowtype
-                                                                                                            .WindowType
+                                                                                                    windowtype
+                                                                                                        .WindowType
                                                                                                     ]
                                                                                                 }
                                                                                             </MenuItem>
@@ -3637,9 +3618,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={"Glass"}>
                                                                                     กระจก
                                                                                 </MenuItem>
@@ -3674,9 +3652,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={"SingleGlazing"}>
                                                                                     กระจกใสธรรมดา
                                                                                 </MenuItem>
@@ -3715,9 +3690,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={"true"}>มี</MenuItem>
                                                                                 <MenuItem value={"false"}>
                                                                                     ไม่มี
@@ -3751,9 +3723,6 @@ function MainPage() {
                                                                                     });
                                                                                 }}
                                                                             >
-                                                                                <MenuItem value="">
-                                                                                    <em>None</em>
-                                                                                </MenuItem>
                                                                                 <MenuItem value={"true"}>มี</MenuItem>
                                                                                 <MenuItem value={"false"}>
                                                                                     ไม่มี
@@ -3820,9 +3789,6 @@ function MainPage() {
                                                             }))
                                                         }
                                                     >
-                                                        <MenuItem value={0}>
-                                                            <em>None</em>
-                                                        </MenuItem>
                                                         <MenuItem value={1}>
                                                             ไม่มีบัลลาสต์/ไม่ทราบ (เช่น หลอด LED, หลอดไส้)
                                                         </MenuItem>
@@ -3881,7 +3847,6 @@ function MainPage() {
                                                     </Table.Header>
                                                     <Table.Body>
                                                         {
-                                                            // @ts-ignore
                                                             formData.equipmentValue.map((item, index) => (
                                                                 <Table.Row key={index}>
                                                                     <Table.Cell>{item.label}</Table.Cell>
@@ -3930,7 +3895,12 @@ function MainPage() {
                         />
                     </Tabs.Content>
                     <Tabs.Content value={"four"}>
-                        {/* <InstallationPositionSelector directions={directions} /> */}
+                        <InstallationPositionSelector
+                            formData={formData}
+                            setFormData={setFormData}
+                            setCalculateVariable={setCalculateVariable}
+                            directions={directions}
+                        />
                     </Tabs.Content>
                     <Tabs.Content value={"five"}>
                         <Box>
@@ -3938,7 +3908,7 @@ function MainPage() {
                                 แสดงผลข้อมูล
                             </Heading>
                             <Grid gridTemplateColumns={"repeat(3, 1fr)"} gap={10} padding={"1.4rem 2rem "}>
-                                <GridItem colSpan={1}>
+                                <GridItem colSpan={1} rowSpan={2}>
                                     <Grid>
                                         <GridItem>
                                             <Table.Root size="sm" border={0} fontSize={16}>
@@ -3976,7 +3946,7 @@ function MainPage() {
                                                         <Table.Row>
                                                             <Table.Cell className="strong-text-blue">
                                                                 <Field.Root>
-                                                                    <Field.Label>ขนากกิจการ</Field.Label>
+                                                                    <Field.Label>ขนาดกิจการ</Field.Label>
                                                                     <Select
                                                                         displayEmpty
                                                                         fullWidth
@@ -3988,9 +3958,6 @@ function MainPage() {
                                                                             }))
                                                                         }
                                                                     >
-                                                                        <MenuItem value="">
-                                                                            <em>None</em>
-                                                                        </MenuItem>
                                                                         <MenuItem value={"Small"}>Small</MenuItem>
                                                                         <MenuItem value={"Large"}>Large</MenuItem>
                                                                     </Select>
@@ -4030,12 +3997,11 @@ function MainPage() {
                                             </Box>
                                             <Image
                                                 width="100%"
-                                                src={`${BASE_URL}${
-                                                    airConditionerTypeImageShow.find(
-                                                        (item) =>
-                                                            item.title === selectedOption.selectedAirConditionerType
-                                                    )?.image
-                                                }`}
+                                                src={`${BASE_URL}${airConditionerTypeImageShow.find(
+                                                    (item) =>
+                                                        item.title === selectedOption.selectedAirConditionerType
+                                                )?.image
+                                                    }`}
                                                 borderRadius={10}
                                             />
                                         </GridItem>
@@ -4045,33 +4011,52 @@ function MainPage() {
                                     <Text className="strong-text-blue">
                                         แนะนำตำแหน่งติดตั้งเครื่องปรับอากาศ (indoor) :
                                     </Text>
-                                    <Box>
-                                        <Text marginBottom={1}>ตำแหน่งที่ 1</Text>
-                                        <Box border={"1px solid #c5c5c6"} borderRadius={10} paddingY={4} paddingX={6}>
-                                            <Text>
-                                                ผนังด้านทิศเหนือ สูงจากพื้น 2.2 เมตรหรือลงจากเพดาน
-                                                (อธิบายถึงความเหมาะสม)
-                                            </Text>
-                                        </Box>
-                                    </Box>
-                                    <Box>
-                                        <Text marginBottom={1}>ตำแหน่งที่ 2</Text>
-                                        <Box border={"1px solid #c5c5c6"} borderRadius={10} paddingY={4} paddingX={6}>
-                                            <Text>
-                                                ผนังด้านทิศเหนือ สูงจากพื้น 2.2 เมตรหรือลงจากเพดาน
-                                                (อธิบายถึงความเหมาะสม)
-                                            </Text>
-                                        </Box>
-                                    </Box>
-                                    <Box>
-                                        <Text marginBottom={1}>ตำแหน่งที่ 3</Text>
-                                        <Box border={"1px solid #c5c5c6"} borderRadius={10} paddingY={4} paddingX={6}>
-                                            <Text>
-                                                ผนังด้านทิศเหนือ สูงจากพื้น 2.2 เมตรหรือลงจากเพดาน
-                                                (อธิบายถึงความเหมาะสม)
-                                            </Text>
-                                        </Box>
-                                    </Box>
+                                    {
+                                        sortedTotalScore.map((wallScore, index) => {
+                                            return (
+                                                <Box key={index}>
+                                                    <Box>
+                                                        <Text marginBottom={1}>ตำแหน่งที่ {index + 1}</Text>
+                                                    </Box>
+                                                    <Box display={'flex'} gap={4} border={"1px solid #c5c5c6"} borderRadius={10} paddingY={4} paddingX={6}>
+                                                        <Text
+                                                            marginBottom={1}
+                                                            fontWeight={500}
+                                                            bgColor={
+                                                                wallScore.wallScore?.totalScore ?
+                                                                    wallScore.wallScore?.totalScore >= 90 ? "#00E200" :
+                                                                        wallScore.wallScore?.totalScore >= 70 ? "#64D9FF" :
+                                                                            wallScore.wallScore?.totalScore >= 50 ? "#F9D800" : "#FF2A04" : ""
+                                                            }
+                                                            borderRadius={15}
+                                                            minWidth={74}
+                                                            textAlign={'center'}
+                                                            color={'#FFF'}
+                                                        >
+                                                            {
+                                                                wallScore.wallScore?.totalScore ?
+                                                                    wallScore.wallScore?.totalScore >= 90 ? "ดี" :
+                                                                        wallScore.wallScore?.totalScore >= 70 ? "พอใช้" :
+                                                                            wallScore.wallScore?.totalScore >= 50 ? "ควรปรับ" : "ไม่แนะนำ" : ""
+                                                            }
+                                                        </Text>
+                                                        <Text>
+                                                            ผนังด้าน{directions.find((d) => d.value === wallScore.directionName)?.label}
+                                                        </Text>
+                                                    </Box>
+                                                </Box>
+                                            )
+                                        })
+                                    }
+                                </GridItem>
+
+                                <GridItem colSpan={2} display="flex" gap={2} flexDirection={"column"}>
+                                    <Text className="strong-text-blue" marginBottom={1}>คำแนะนำ</Text>
+                                    <Text>
+                                        {
+                                            airConditionerTypes.find((air) => air.title === selectedOption.selectedAirConditionerType)?.description
+                                        }
+                                    </Text>
                                 </GridItem>
                             </Grid>
                         </Box>

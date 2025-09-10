@@ -14,7 +14,7 @@ interface SelectedOption {
 
 interface AirConditionerSelectorProps {
     filterAirConditionerTypes: Item[];
-    onChange?: (option: SelectedOption) => void;
+    onChange?: (option: SelectedOption | ((prev: SelectedOption) => SelectedOption)) => void;
 }
 
 const AirConditionerSelector: React.FC<AirConditionerSelectorProps> = ({
@@ -27,7 +27,10 @@ const AirConditionerSelector: React.FC<AirConditionerSelectorProps> = ({
 
     useEffect(() => {
         if (onChange) {
-            onChange(selectedOption);
+            onChange?.((prev) => ({
+                ...prev,
+                selectedAirConditionerType: selectedOption.selectedAirConditionerType,
+            }));
         }
     }, [selectedOption, onChange]);
 
