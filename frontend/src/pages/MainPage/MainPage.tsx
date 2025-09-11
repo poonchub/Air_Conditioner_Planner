@@ -68,6 +68,7 @@ import { findUfloorIn, loadUfloorInData } from "@/data/UfloorInService";
 import type { BTUAirRow } from "@/types/BTUAirRow";
 import { getClosestBTUAirData, loadBTUAirRowData } from "@/data/BTUAirService";
 import InstallationPositionSelector from "@/components/InstallationPositionSelector/InstallationPositionSelector";
+import { useForm, Controller } from "react-hook-form";
 
 export const BASE_URL = import.meta.env.BASE_URL;
 
@@ -220,6 +221,33 @@ type HourData = {
 };
 
 function MainPage() {
+    const { control, handleSubmit, formState: { errors } } = useForm<FormDataProps>({
+        defaultValues: {
+            province: "",
+            people: 1,
+            width: 3,
+            depth: 3,
+            height: 3,
+            startTime: "6",
+            endTime: "17",
+            ceiling: "",
+            ceilingHeight: "",
+            buildingType: "",
+            roomPosition: "",
+            roofType: "",
+            kRoofColor: 1,
+            ballastFactor: 1,
+            noAirDirectionValue: [],
+            equipmentValue: [],
+            doorValue: [],
+            windowValue: [],
+            wallValue: [],
+            floorValue: { uFloor: 0, qFloor: 0 },
+            roofValue: { qRoofByMonth: [] },
+            furniturePosition: [],
+        },
+    });
+
     const [selectedOption, setSelectedOption] = useState<{
         buildingType?: string | null;
         subRoom?: string | null;
@@ -322,13 +350,17 @@ function MainPage() {
     const [UfloorInData, setUfloorInData] = useState<UfloorInRow[]>([]);
     const [BTUAirData, setBTUAirData] = useState<BTUAirRow[]>([]);
 
-    const handleDoorDirectionChange = (event: SelectChangeEvent<string[]>) => {
-        const {
-            target: { value },
-        } = event;
+    const handleDoorDirectionChange = (
+        event: SelectChangeEvent<string[]>,
+        field: any // จาก Controller
+    ) => {
+        const { value } = event.target;
+        const directionArr = typeof value === "string" ? value.split(",") : value;
+
+        // อัปเดต react-hook-form
+        field.onChange(directionArr);
 
         setFormData((prev) => {
-            const directionArr = typeof value === "string" ? value.split(",") : value;
             if (directionArr.includes("None")) {
                 return {
                     ...prev,
@@ -353,9 +385,8 @@ function MainPage() {
             const prevDoors = prev.doorValue || [];
             const newDoors: DoorValue[] = [...prevDoors];
 
-            directionArr?.forEach((dir) => {
-                const exists = newDoors.find((d) => d.directionName === dir);
-                if (!exists) {
+            directionArr.forEach((dir) => {
+                if (!newDoors.find((d) => d.directionName === dir)) {
                     newDoors.push({
                         directionName: dir,
                         doorType: "",
@@ -372,7 +403,9 @@ function MainPage() {
                 }
             });
 
-            const filteredDoors = newDoors.filter((d) => directionArr?.includes(d.directionName));
+            const filteredDoors = newDoors.filter((d) =>
+                directionArr.includes(d.directionName)
+            );
 
             return {
                 ...prev,
@@ -381,14 +414,17 @@ function MainPage() {
         });
     };
 
-    const handleWindowDirectionChange = (event: SelectChangeEvent<string[]>) => {
-        const {
-            target: { value },
-        } = event;
+    const handleWindowDirectionChange = (
+        event: SelectChangeEvent<string[]>,
+        field: any // จาก Controller
+    ) => {
+        const { value } = event.target;
+        const directionArr = typeof value === "string" ? value.split(",") : value;
+
+        // อัปเดต react-hook-form
+        field.onChange(directionArr);
 
         setFormData((prev) => {
-            const directionArr = typeof value === "string" ? value.split(",") : value;
-
             if (directionArr.includes("None")) {
                 return {
                     ...prev,
@@ -413,9 +449,8 @@ function MainPage() {
             const prevWindows = prev.windowValue || [];
             const newWindows: WindowValue[] = [...prevWindows];
 
-            directionArr?.forEach((dir) => {
-                const exists = newWindows.find((d) => d.directionName === dir);
-                if (!exists) {
+            directionArr.forEach((dir) => {
+                if (!newWindows.find((d) => d.directionName === dir)) {
                     newWindows.push({
                         directionName: dir,
                         windowType: "",
@@ -432,7 +467,9 @@ function MainPage() {
                 }
             });
 
-            const filteredWindows = newWindows.filter((d) => directionArr?.includes(d.directionName));
+            const filteredWindows = newWindows.filter((d) =>
+                directionArr.includes(d.directionName)
+            );
 
             return {
                 ...prev,
@@ -441,14 +478,17 @@ function MainPage() {
         });
     };
 
-    const handleWallDirectionChange = (event: SelectChangeEvent<string[]>) => {
-        const {
-            target: { value },
-        } = event;
+    const handleWallDirectionChange = (
+        event: SelectChangeEvent<string[]>,
+        field: any // จาก Controller
+    ) => {
+        const { value } = event.target;
+        const directionArr = typeof value === "string" ? value.split(",") : value;
+
+        // อัปเดต react-hook-form
+        field.onChange(directionArr);
 
         setFormData((prev) => {
-            const directionArr = typeof value === "string" ? value.split(",") : value;
-
             if (directionArr.includes("None")) {
                 return {
                     ...prev,
@@ -468,7 +508,15 @@ function MainPage() {
                             qWallGlassByMonth: [],
                             qSolarWallGlassByMonth: [],
                             wallCondition: "",
-                            hasOpenSpace: true
+                            hasOpenSpace: true,
+                            wallScore: {
+                                solarExposure: 0,
+                                furnitureAndOccupants: 0,
+                                airDistribution: 0,
+                                doorsAndWindows: 0,
+                                pipingLayout: 0,
+                                totalScore: 0
+                            },
                         },
                     ],
                 };
@@ -478,8 +526,7 @@ function MainPage() {
             const newWalls: WallValue[] = [...prevWalls];
 
             directionArr?.forEach((dir) => {
-                const exists = newWalls.find((d) => d.directionName === dir);
-                if (!exists) {
+                if (!newWalls.find((d) => d.directionName === dir)) {
                     newWalls.push({
                         directionName: dir,
                         position: "",
@@ -495,12 +542,22 @@ function MainPage() {
                         qWallGlassByMonth: [],
                         qSolarWallGlassByMonth: [],
                         wallCondition: "",
-                        hasOpenSpace: true
+                        hasOpenSpace: true,
+                        wallScore: {
+                            solarExposure: 0,
+                            furnitureAndOccupants: 0,
+                            airDistribution: 0,
+                            doorsAndWindows: 0,
+                            pipingLayout: 0,
+                            totalScore: 0
+                        },
                     });
                 }
             });
 
-            const filteredWalls = newWalls.filter((d) => directionArr?.includes(d.directionName));
+            const filteredWalls = newWalls.filter((d) =>
+                directionArr?.includes(d.directionName)
+            );
 
             return {
                 ...prev,
@@ -509,14 +566,17 @@ function MainPage() {
         });
     };
 
-    const handleNoAirDirectionChange = (event: SelectChangeEvent<string[]>) => {
-        const {
-            target: { value },
-        } = event;
+    const handleNoAirDirectionChange = (
+        event: SelectChangeEvent<string[]>,
+        field: any // จาก Controller
+    ) => {
+        const { value } = event.target;
+        const directionArr = typeof value === "string" ? value.split(",") : value;
+
+        // อัปเดต react-hook-form
+        field.onChange(directionArr);
 
         setFormData((prev) => {
-            const directionArr = typeof value === "string" ? value.split(",") : value;
-
             if (directionArr.includes("None")) {
                 return {
                     ...prev,
@@ -537,9 +597,8 @@ function MainPage() {
             const prevDirections = prev.noAirDirectionValue || [];
             const newDirections: NoAirDirectionValue[] = [...prevDirections];
 
-            directionArr?.forEach((dir) => {
-                const exists = newDirections.find((d) => d.directionName === dir);
-                if (!exists) {
+            directionArr.forEach((dir) => {
+                if (!newDirections.find((d) => d.directionName === dir)) {
                     newDirections.push({
                         directionName: dir,
                         position: "",
@@ -552,7 +611,9 @@ function MainPage() {
                 }
             });
 
-            const filteredDirections = newDirections.filter((d) => directionArr?.includes(d.directionName));
+            const filteredDirections = newDirections.filter((d) =>
+                directionArr.includes(d.directionName)
+            );
 
             return {
                 ...prev,
@@ -676,7 +737,7 @@ function MainPage() {
                 qEquipmentSum: sum,
             }));
         }
-    }, [...formData.equipmentValue.map((item) => item.qEquipment)]);
+    }, [JSON.stringify(formData.equipmentValue)]);
 
     // DoorValue
     useEffect(() => {
@@ -1441,26 +1502,6 @@ function MainPage() {
         }
     }, [formData.doorValue, formData.windowValue, formData.wallValue]);
 
-    // Recommended BTU
-    useEffect(() => {
-        if (selectedOption.selectedAirConditionerType && BTUAirData.length > 0) {
-            const targetBTU = calculateVariable.qTotalAll * 3.412;
-            const result = getClosestBTUAirData(BTUAirData, selectedOption.selectedAirConditionerType, targetBTU);
-            setCalculateVariable((prev) => ({
-                ...prev,
-                recommendedBTU: Number(result?.BTU),
-            }));
-
-            const electricityCost = calculateElectricityCost();
-            console.log("Cost: ", electricityCost);
-
-            setCalculateVariable((prev) => ({
-                ...prev,
-                electricityCost: electricityCost,
-            }));
-        }
-    }, [selectedOption.selectedAirConditionerType, BTUAirData, calculateVariable.qTotalAll, selectedOption.businessSize]);
-
     function combineGlassData(wallValue: WallValue[], doorValue: DoorValue[], windowValue: WindowValue[]) {
         return wallValue.map((wall) => {
             const direction = wall.directionName;
@@ -1740,12 +1781,12 @@ function MainPage() {
         );
         const { totalQIn } = calculateTotalQIn(formData);
 
-        console.log("totalQGlassByMonth: ", totalQGlassByMonth);
-        console.log("totalQSolarByMonth: ", totalQSolarByMonth);
-        console.log("totalQWallByMonth: ", totalQWallByMonth);
-        console.log("totalQLoadByMonth: ", totalQLoadByMonth);
+        // console.log("totalQGlassByMonth: ", totalQGlassByMonth);
+        // console.log("totalQSolarByMonth: ", totalQSolarByMonth);
+        // console.log("totalQWallByMonth: ", totalQWallByMonth);
+        // console.log("totalQLoadByMonth: ", totalQLoadByMonth);
         console.log("maxRecord: ", maxRecord);
-        console.log("totalQIn: ", totalQIn);
+        // console.log("totalQIn: ", totalQIn);
 
         setCalculateVariable((prev) => ({
             ...prev,
@@ -1759,12 +1800,12 @@ function MainPage() {
     };
 
     const handleClickCalculateQTotalAll = async () => {
-        console.log("qLight:", calculateVariable.qLight);
-        console.log("qPeople:", calculateVariable.qPeople);
-        console.log("qEquipmentSum:", calculateVariable.qEquipmentSum);
-        console.log("qInfiltration:", calculateVariable.qInfiltration);
-        console.log("maxRecord.qTotal:", calculateVariable.maxRecord?.qTotal);
-        console.log("totalQIn:", calculateVariable.totalQIn);
+        // console.log("qLight:", calculateVariable.qLight);
+        // console.log("qPeople:", calculateVariable.qPeople);
+        // console.log("qEquipmentSum:", calculateVariable.qEquipmentSum);
+        // console.log("qInfiltration:", calculateVariable.qInfiltration);
+        // console.log("maxRecord.qTotal:", calculateVariable.maxRecord?.qTotal);
+        // console.log("totalQIn:", calculateVariable.totalQIn);
 
         const sum =
             calculateVariable.qLight +
@@ -1774,7 +1815,7 @@ function MainPage() {
             (calculateVariable.maxRecord.qTotal || 0) +
             calculateVariable.totalQIn;
 
-        console.log("Sum BTU:", sum);
+        console.log("qTotalAll:", sum);
 
         setCalculateVariable((prev) => ({
             ...prev,
@@ -1784,7 +1825,6 @@ function MainPage() {
         calculateVariable.wallScoreAll.map((wallScore) => {
             console.log(`Direction: ${wallScore.directionName}, totalScore: ${wallScore.wallScore?.totalScore}`)
         })
-
     };
 
     // คำนวณค่าไฟฟ้า สำหรับที่พักอาศัย (user_type = 1)
@@ -1865,9 +1905,9 @@ function MainPage() {
         return cost;
     }
 
-    const calculateElectricityCost = () => {
+    const calculateElectricityCost = (btu_per_hr: number) => {
         // แปลง Watt → BTU/h
-        const btu_per_hr = calculateVariable.recommendedBTU;
+        // const btu_per_hr = calculateVariable.recommendedBTU;
 
         console.log("btu_per_hr: ", btu_per_hr);
 
@@ -1901,12 +1941,16 @@ function MainPage() {
             user_type = 3;
         }
 
+        console.log("user_type: ", user_type)
         let base_cost: number = 0;
         if (user_type === 1) {
+            console.log("use calculate type 1")
             base_cost = calcEnergyChargeResidential(E_kWh_month);
         } else if (user_type === 2) {
+            console.log("use calculate type 1")
             base_cost = calcEnergyChargeSmallBusiness(E_kWh_month);
         } else if (user_type === 3) {
+            console.log("use calculate type 1")
             // กิจการขนาดกลาง: ค่าไฟพื้นฐาน + Demand Charge
             base_cost = E_kWh_month * 3.1097;
             const demand_charge = P_kW * 221.5; // บาทต่อกิโลวัตต์
@@ -1931,16 +1975,57 @@ function MainPage() {
         };
     };
 
-    const click = async () => {
-        await handleClickCalculateAll()
-        await handleClickCalculateQTotalAll()
-    }
+    useEffect(() => {
+        if (tabValue === "five") {
+            handleClickCalculateAll()
+        }
+    }, [tabValue])
 
     useEffect(() => {
-        if (selectedOption.buildingType !== "Home") {
-            click()
-        }
-    }, [selectedOption.businessSize])
+        handleClickCalculateQTotalAll()
+    }, [calculateVariable.maxRecord])
+
+    // Recommended BTU
+    useEffect(() => {
+        const targetBTU = calculateVariable.qTotalAll * 3.412;
+        const result = getClosestBTUAirData(BTUAirData, selectedOption.selectedAirConditionerType || "", targetBTU);
+        setCalculateVariable((prev) => ({
+            ...prev,
+            recommendedBTU: Number(result?.BTU),
+        }));
+
+        console.log("targetBTU: ", targetBTU)
+        console.log("result: ", result)
+    }, [BTUAirData, calculateVariable.qTotalAll]);
+
+    // Cost
+    useEffect(() => {
+        const electricityCost = calculateElectricityCost(calculateVariable.recommendedBTU);
+        console.log("Cost: ", electricityCost);
+
+        setCalculateVariable((prev) => ({
+            ...prev,
+            electricityCost: electricityCost,
+        }));
+    }, [calculateVariable.recommendedBTU, selectedOption.businessSize])
+
+    // const steps = ["one", "two", "three", "four", "five"];
+
+    // const handleClickNext = () => {
+    //     const currentIndex = steps.indexOf(tabValue);
+    //     const value = steps[currentIndex + (selectedOption.selectedAirConditionerType !== "Cassette Type" ? 1 : 2)]
+    //     if (currentIndex < steps.length - 1) {
+    //         setTabValue(value);
+    //     }
+    // };
+
+    // const handleClickPrev = () => {
+    //     const currentIndex = steps.indexOf(tabValue);
+    //     const value = steps[currentIndex - (selectedOption.selectedAirConditionerType !== "Cassette Type" ? 1 : 2)]
+    //     if (currentIndex > 0) {
+    //         setTabValue(value);
+    //     }
+    // };
 
     const airConditionerTypes = [
         {
@@ -1972,27 +2057,6 @@ function MainPage() {
         },
         { id: 3, title: "Cassette Type", image: "/images/option/cassette_type_show.png" },
     ];
-
-    const steps = ["one", "two", "three", "four", "five"];
-
-    const handleClickNext = () => {
-        const currentIndex = steps.indexOf(tabValue);
-        const value = steps[currentIndex + (selectedOption.selectedAirConditionerType !== "Cassette Type" ? 1 : 2)]
-        if (currentIndex < steps.length - 1) {
-            setTabValue(value);
-        }
-        if (value === "five") {
-            click()
-        }
-    };
-
-    const handleClickPrev = () => {
-        const currentIndex = steps.indexOf(tabValue);
-        const value = steps[currentIndex - (selectedOption.selectedAirConditionerType !== "Cassette Type" ? 1 : 2)]
-        if (currentIndex > 0) {
-            setTabValue(value);
-        }
-    };
 
     const directions = [
         { label: "ทิศเหนือ (N)", value: "N" },
@@ -2055,6 +2119,10 @@ function MainPage() {
         (a, b) => (b?.wallScore?.totalScore ?? 0) - (a?.wallScore?.totalScore ?? 0)
     );
 
+    const onSubmit = (data: FormDataProps) => {
+        console.log("Form Data:", data);
+    };
+
     return (
         <Box className="main-page-container">
             <Button onClick={handleClickCalculateAll}>Calculate</Button>
@@ -2103,1023 +2171,1149 @@ function MainPage() {
                     </Tabs.List>
                     <Tabs.Content value={"one"}>
                         <BuildingSelector onChange={setSelectedOption} />
+                        <Collapsible.Root open={selectedOption.buildingType != ""}>
+                            <Flex width={"100%"} justifyContent={"end"}>
+                                <Button type="submit" width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("two")}>
+                                    Next
+                                </Button>
+                            </Flex>
+                        </Collapsible.Root>
                     </Tabs.Content>
                     <Tabs.Content value={"two"}>
-                        <Box>
-                            <Heading size={"2xl"} color={"#003475"}>
-                                กรอกข้อมูลอาคาร
-                            </Heading>
+                        <form onSubmit={handleSubmit(onSubmit)}>
+                            <Box>
+                                <Heading size={"2xl"} color={"#003475"}>
+                                    กรอกข้อมูลอาคาร
+                                </Heading>
 
-                            <Grid gridTemplateColumns={"repeat(2, 1fr)"} gap={10} padding={"1.4rem 2rem "}>
-                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
-                                    <Grid gridTemplateColumns={"repeat(2, 1fr)"} gap={5}>
-                                        <GridItem colSpan={2}>
-                                            <Field.Root>
-                                                <Field.Label>จังหวัด (Province)</Field.Label>
-                                                <FormControl fullWidth>
-                                                    <Select
-                                                        // error
-                                                        displayEmpty
-                                                        value={formData.province}
-                                                        onChange={(e) =>
-                                                            setFormData((prev) => ({
-                                                                ...prev,
-                                                                province: e.target.value,
-                                                            }))
-                                                        }
-                                                    >
-                                                        {climateData.map((item, index) => {
-                                                            return (
-                                                                <MenuItem key={index} value={item.Province}>
-                                                                    {provinceLabelMap[item.Province]}
-                                                                </MenuItem>
-                                                            );
-                                                        })}
-                                                    </Select>
-                                                </FormControl>
-                                            </Field.Root>
-                                        </GridItem>
-                                        <GridItem colSpan={2}>
-                                            <Field.Root>
-                                                <Field.Label>ขนาดห้อง</Field.Label>
-                                                <Table.Root size="sm" variant={"outline"}>
-                                                    <Table.Header>
-                                                        <Table.Row>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                กว้าง
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                ยาว
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                สูง
-                                                            </Table.ColumnHeader>
-                                                        </Table.Row>
-                                                    </Table.Header>
-                                                    <Table.Body>
-                                                        <Table.Row>
-                                                            <Table.Cell>
-                                                                <TextField
-                                                                    fullWidth
-                                                                    type="number"
-                                                                    value={formData.width}
-                                                                    onChange={(e) =>
-                                                                        setFormData((prev) => ({
-                                                                            ...prev,
-                                                                            width: Number(e.target.value),
-                                                                        }))
-                                                                    }
-                                                                />
-                                                            </Table.Cell>
-                                                            <Table.Cell>
-                                                                <TextField
-                                                                    fullWidth
-                                                                    type="number"
-                                                                    value={formData.depth}
-                                                                    onChange={(e) =>
-                                                                        setFormData((prev) => ({
-                                                                            ...prev,
-                                                                            depth: Number(e.target.value),
-                                                                        }))
-                                                                    }
-                                                                />
-                                                            </Table.Cell>
-                                                            <Table.Cell>
-                                                                <TextField
-                                                                    fullWidth
-                                                                    type="number"
-                                                                    value={formData.height}
-                                                                    onChange={(e) =>
-                                                                        setFormData((prev) => ({
-                                                                            ...prev,
-                                                                            height: Number(e.target.value),
-                                                                        }))
-                                                                    }
-                                                                />
-                                                            </Table.Cell>
-                                                        </Table.Row>
-                                                    </Table.Body>
-                                                </Table.Root>
-                                            </Field.Root>
-                                        </GridItem>
-                                        <GridItem colSpan={1}>
-                                            <Field.Root>
-                                                <Field.Label>ช่วงเวลาที่ใช้งาน</Field.Label>
-                                                <Grid templateColumns="repeat(2, 1fr)" width={"100%"} gap={3}>
-                                                    {/* เวลาเริ่มต้น */}
-                                                    <GridItem colSpan={1}>
-                                                        <FormControl fullWidth>
-                                                            <Select
-                                                                displayEmpty
-                                                                value={formData.startTime}
-                                                                onChange={(e) =>
-                                                                    setFormData((prev) => ({
-                                                                        ...prev,
-                                                                        startTime: e.target.value,
-                                                                    }))
-                                                                }
-                                                            >
-                                                                {hourOptions.map((item, index) => {
-                                                                    return (
-                                                                        <MenuItem key={index} value={item.value}>
-                                                                            {item.label}
-                                                                        </MenuItem>
-                                                                    );
-                                                                })}
-                                                            </Select>
-                                                        </FormControl>
-                                                    </GridItem>
-
-                                                    {/* เวลาสิ้นสุด */}
-                                                    <GridItem colSpan={1}>
-                                                        <FormControl fullWidth>
-                                                            <Select
-                                                                displayEmpty
-                                                                value={formData.endTime}
-                                                                onChange={(e) =>
-                                                                    setFormData((prev) => ({
-                                                                        ...prev,
-                                                                        endTime: e.target.value,
-                                                                    }))
-                                                                }
-                                                            >
-                                                                {hourOptions.map((item, index) => {
-                                                                    return (
-                                                                        <MenuItem key={index} value={item.value}>
-                                                                            {item.label}
-                                                                        </MenuItem>
-                                                                    );
-                                                                })}
-                                                            </Select>
-                                                        </FormControl>
-                                                    </GridItem>
-                                                </Grid>
-                                            </Field.Root>
-                                        </GridItem>
-
-                                        <GridItem colSpan={1}>
-                                            <Grid gridTemplateColumns={"repeat(2, 1fr)"} gap={5}>
-                                                <GridItem colSpan={1}>
-                                                    <Field.Root>
-                                                        <Field.Label>มีพื้นที่ฝ้าเพดานหรือไม่</Field.Label>
-                                                        <FormControl fullWidth>
-                                                            <Select
-                                                                displayEmpty
-                                                                value={formData.ceiling}
-                                                                onChange={(e) =>
-                                                                    setFormData((prev) => ({
-                                                                        ...prev,
-                                                                        ceiling: e.target.value,
-                                                                    }))
-                                                                }
-                                                            >
-                                                                <MenuItem value={"HaveCeilinglessthan"}>
-                                                                    มีน้อยกว่า 30 cm
-                                                                </MenuItem>
-                                                                <MenuItem value={"HaveCeilinggreaterthan"}>
-                                                                    มีมากกว่า 30 cm
-                                                                </MenuItem>
-                                                                <MenuItem value={"NoCeiling"}>ไม่มีฝ้า</MenuItem>
-                                                            </Select>
-                                                        </FormControl>
-                                                    </Field.Root>
-                                                </GridItem>
-                                                <GridItem colSpan={1}>
-                                                    <Field.Root>
-                                                        <Field.Label>ความสูงเพดาน (จากพื้นถึงฝ้าเพดาน)</Field.Label>
-                                                        <FormControl fullWidth>
-                                                            <Select
-                                                                displayEmpty
-                                                                value={formData.ceilingHeight}
-                                                                onChange={(e) =>
-                                                                    setFormData((prev) => ({
-                                                                        ...prev,
-                                                                        ceilingHeight: e.target.value,
-                                                                    }))
-                                                                }
-                                                            >
-                                                                <MenuItem value={"Low"}>ต่ำ (2-2.5)</MenuItem>
-                                                                <MenuItem value={"Middle"}>กลาง (2.5-3)</MenuItem>
-                                                                <MenuItem value={"High"}>สูง (&gt;3)</MenuItem>
-                                                                <MenuItem value={"OverHigh"}>สูงมาก (&gt;4)</MenuItem>
-                                                            </Select>
-                                                        </FormControl>
-                                                    </Field.Root>
-                                                </GridItem>
-                                            </Grid>
-                                        </GridItem>
-
-                                        <GridItem colSpan={1}>
-                                            <Field.Root>
-                                                <Field.Label>ประเภทอาคาร</Field.Label>
-                                                <FormControl fullWidth>
-                                                    <Select
-                                                        displayEmpty
-                                                        value={formData.buildingType}
-                                                        onChange={(e) =>
-                                                            setFormData((prev) => ({
-                                                                ...prev,
-                                                                buildingType: e.target.value,
-                                                            }))
-                                                        }
-                                                    >
-                                                        <MenuItem value={"Single"}>อาคารชั้นเดียว</MenuItem>
-                                                        <MenuItem value={"Multi"}>อาคารหลายชั้น</MenuItem>
-                                                    </Select>
-                                                </FormControl>
-                                            </Field.Root>
-                                        </GridItem>
-
-                                        <Collapse in={formData.buildingType === "Multi"} timeout={400} unmountOnExit>
-                                            <GridItem colSpan={1}>
+                                <Grid gridTemplateColumns={"repeat(2, 1fr)"} gap={10} padding={"1.4rem 2rem "}>
+                                    <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
+                                        <Grid gridTemplateColumns={"repeat(2, 1fr)"} gap={5}>
+                                            <GridItem colSpan={2}>
                                                 <Field.Root>
-                                                    <Field.Label>ตำแหน่งห้อง</Field.Label>
-                                                    <FormControl fullWidth>
-                                                        <Select
-                                                            displayEmpty
-                                                            value={formData.roomPosition}
-                                                            onChange={(e) =>
-                                                                setFormData((prev) => ({
-                                                                    ...prev,
-                                                                    roomPosition: e.target.value,
-                                                                }))
-                                                            }
-                                                        >
-                                                            <MenuItem value="Top">ชั้นบนสุด</MenuItem>
-                                                            <MenuItem value="Middle">ระหว่างชั้น</MenuItem>
-                                                            <MenuItem value="Bottom">ชั้นล่างสุด</MenuItem>
-                                                        </Select>
-                                                    </FormControl>
-                                                </Field.Root>
-                                            </GridItem>
-                                        </Collapse>
-                                    </Grid>
-                                </GridItem>
-
-                                {/* Wall */}
-                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
-                                    <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
-                                        <GridItem>
-                                            <Field.Root>
-                                                <Field.Label>ผนัง (wall)</Field.Label>
-                                                <Field.Label>
-                                                    ระบุทิศผนังภายนอกหรือผนังด้านที่ไม่อยู่ในอาคาร (เลือกได้มากกว่า1)
-                                                </Field.Label>
-                                                <FormControl sx={{ width: "100%" }}>
-                                                    <Select
-                                                        displayEmpty
-                                                        multiple
-                                                        value={formData.wallValue.map((d) => d.directionName)}
-                                                        onChange={handleWallDirectionChange}
-                                                        input={<OutlinedInput />}
-                                                        renderValue={(selected) => (
-                                                            <Box display={"flex"} flexWrap={"wrap"} gap={0.5}>
-                                                                {selected?.map((value) => (
-                                                                    <Chip key={value} label={value} />
-                                                                ))}
-                                                            </Box>
+                                                    <Field.Label>จังหวัด (Province)</Field.Label>
+                                                    <Controller
+                                                        name="province"
+                                                        control={control}
+                                                        rules={{ required: "กรุณาเลือกจังหวัด" }}
+                                                        render={({ field }) => (
+                                                            <FormControl fullWidth error={!!errors.province}>
+                                                                <Select
+                                                                    {...field}
+                                                                    displayEmpty
+                                                                    onChange={(e) => {
+                                                                        field.onChange(e); // อัปเดต react-hook-form
+                                                                        setFormData((prev) => ({
+                                                                            ...prev,
+                                                                            province: e.target.value, // อัปเดต state เดิมด้วย
+                                                                        }));
+                                                                    }}
+                                                                >
+                                                                    <MenuItem value="">
+                                                                        <em>เลือกจังหวัด</em>
+                                                                    </MenuItem>
+                                                                    {climateData.map((item, index) => (
+                                                                        <MenuItem key={index} value={item.Province}>
+                                                                            {provinceLabelMap[item.Province]}
+                                                                        </MenuItem>
+                                                                    ))}
+                                                                </Select>
+                                                                {errors.province && (
+                                                                    <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                        {errors.province.message}
+                                                                    </p>
+                                                                )}
+                                                            </FormControl>
                                                         )}
-                                                    >
-                                                        {directions.map((item, index) => (
-                                                            <MenuItem key={index} value={item.value}>
-                                                                {item.label}
-                                                            </MenuItem>
-                                                        ))}
-                                                    </Select>
-                                                </FormControl>
-                                            </Field.Root>
-                                        </GridItem>
-
-                                        <Collapse
-                                            in={
-                                                formData.wallValue.length > 0 &&
-                                                formData.wallValue[0].directionName !== "None"
-                                            }
-                                            timeout={400}
-                                            unmountOnExit
-                                        >
-                                            <GridItem>
-                                                <Field.Root>
-                                                    <Field.Label>ระบุข้อมูลผนัง</Field.Label>
-                                                    <Table.Root size="sm" variant={"outline"}>
-                                                        <Table.Header>
-                                                            <Table.Row>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ทิศทาง
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ตำแหน่ง
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    วัสดุ
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ชนิดกระจก
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    กันสาด
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ม่านบังแดด
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    สีภายนอก
-                                                                </Table.ColumnHeader>
-                                                            </Table.Row>
-                                                        </Table.Header>
-                                                        <Table.Body>
-                                                            {formData.wallValue.map((item, index) => {
-                                                                return (
-                                                                    <Table.Row key={index}>
-                                                                        <Table.Cell textAlign={"center"}>
-                                                                            {
-                                                                                directions.find(
-                                                                                    (d) =>
-                                                                                        d.value === item.directionName
-                                                                                )?.label
-                                                                            }
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                value={item.position ?? ""}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = e.target.value;
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.wallValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            position: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            wallValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value="Width">
-                                                                                    ด้านกว้าง
-                                                                                </MenuItem>
-                                                                                <MenuItem value="Depth">
-                                                                                    ด้านยาว
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                value={item.material}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = e.target.value;
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.wallValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            material: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            wallValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value="BrickPlaster">
-                                                                                    ผนังอิฐฉาบปูน
-                                                                                </MenuItem>
-                                                                                <MenuItem value="WallwithInsulation">
-                                                                                    ผนังมีฉนวนตรงกลาง
-                                                                                </MenuItem>
-                                                                                <MenuItem value="Prefabricated">
-                                                                                    ผนังสำเร็จรูป
-                                                                                </MenuItem>
-                                                                                <MenuItem value="Glass">กระจก</MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                disabled={item.material !== "Glass"}
-                                                                                value={item.glassType}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = e.target.value;
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.wallValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            glassType: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            wallValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={"SingleGlazing"}>
-                                                                                    กระจกใสธรรมดา
-                                                                                </MenuItem>
-                                                                                <MenuItem value={"Tinted"}>
-                                                                                    กระจกสี
-                                                                                </MenuItem>
-                                                                                <MenuItem value={"Low-E"}>
-                                                                                    กระจก Low-E
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                disabled={item.material !== "Glass"}
-                                                                                value={item.haveShade}
-                                                                                onChange={(e) => {
-                                                                                    const newValue =
-                                                                                        e.target.value === "true";
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.wallValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            haveShade: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            wallValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={"true"}>มี</MenuItem>
-                                                                                <MenuItem value={"false"}>
-                                                                                    ไม่มี
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                disabled={item.material !== "Glass"}
-                                                                                value={item.haveCurtain}
-                                                                                onChange={(e) => {
-                                                                                    const newValue =
-                                                                                        e.target.value === "true";
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.wallValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            haveCurtain: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            wallValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={"true"}>มี</MenuItem>
-                                                                                <MenuItem value={"false"}>
-                                                                                    ไม่มี
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                value={item.kWallColor}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = Number(
-                                                                                        e.target.value
-                                                                                    );
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.wallValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            kWallColor: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            wallValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={0.65}>
-                                                                                    สีสว่าง
-                                                                                </MenuItem>
-                                                                                <MenuItem value={1}>สีเข้ม</MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-                                                                    </Table.Row>
-                                                                );
-                                                            })}
-                                                        </Table.Body>
-                                                    </Table.Root>
+                                                    />
                                                 </Field.Root>
                                             </GridItem>
-                                        </Collapse>
-                                    </Grid>
-                                </GridItem>
-
-                                {/* NoAirDirection */}
-                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
-                                    <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
-                                        <GridItem>
-                                            <Field.Root>
-                                                <Field.Label>สภาพแวดล้อมภายในอาคาร</Field.Label>
-                                                <Field.Label>
-                                                    ระบุอีกฝั่งของผนังที่ไม่ได้ติดตั้งเครื่องวปรับอากาศ
-                                                    (เฉพาะผนังที่ติดกับห้องอื่น และเลือกได้มากกว่า1)
-                                                </Field.Label>
-                                                <FormControl sx={{ width: "100%" }}>
-                                                    <Select
-                                                        displayEmpty
-                                                        multiple
-                                                        value={formData.noAirDirectionValue.map((d) => d.directionName)}
-                                                        onChange={handleNoAirDirectionChange}
-                                                        input={<OutlinedInput />}
-                                                        renderValue={(selected) => (
-                                                            <Box display={"flex"} flexWrap={"wrap"} gap={0.5}>
-                                                                {selected?.map((value) => (
-                                                                    <Chip key={value} label={value} />
-                                                                ))}
-                                                            </Box>
-                                                        )}
-                                                    >
-                                                        {(formData.buildingType === "Multi"
-                                                            ? roomSides
-                                                            : directions
-                                                        ).map((item, index) => {
-                                                            return (
-                                                                <MenuItem key={index} value={item.value}>
-                                                                    {item.label}
-                                                                </MenuItem>
-                                                            );
-                                                        })}
-                                                    </Select>
-                                                </FormControl>
-                                            </Field.Root>
-                                        </GridItem>
-
-                                        <Collapse
-                                            in={
-                                                formData.noAirDirectionValue.length > 0 &&
-                                                formData.noAirDirectionValue[0].directionName !== "None"
-                                            }
-                                            timeout={400}
-                                            unmountOnExit
-                                        >
-                                            <GridItem>
+                                            <GridItem colSpan={2}>
                                                 <Field.Root>
-                                                    <Field.Label>ระบุข้อมูลผนัง</Field.Label>
+                                                    <Field.Label>ขนาดห้อง</Field.Label>
                                                     <Table.Root size="sm" variant={"outline"}>
                                                         <Table.Header>
                                                             <Table.Row>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ทิศทาง
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    กว้าง
                                                                 </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ตำแหน่ง
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ยาว
                                                                 </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    วัสดุ
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ชนิดกระจก
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ฉนวนกันความร้อน
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ฝ้าเพดาน
-                                                                </Table.ColumnHeader>
-                                                            </Table.Row>
-                                                        </Table.Header>
-                                                        <Table.Body>
-                                                            {formData.noAirDirectionValue.map((item, index) => {
-                                                                return (
-                                                                    <Table.Row key={index}>
-                                                                        <Table.Cell textAlign={"center"}>
-                                                                            {
-                                                                                roomSides.find(
-                                                                                    (d) =>
-                                                                                        d.value === item.directionName
-                                                                                )?.label
-                                                                            }
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                value={item.position ?? ""}
-                                                                                disabled={
-                                                                                    item.directionName === "Top" ||
-                                                                                    item.directionName === "Bottom"
-                                                                                }
-                                                                                onChange={(e) => {
-                                                                                    const newValue = e.target.value;
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.noAirDirectionValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            position: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            noAirDirectionValue:
-                                                                                                updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value="Width">
-                                                                                    ด้านกว้าง
-                                                                                </MenuItem>
-                                                                                <MenuItem value="Depth">
-                                                                                    ด้านยาว
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                value={item.material}
-                                                                                disabled={
-                                                                                    item.directionName === "Top" ||
-                                                                                    item.directionName === "Bottom"
-                                                                                }
-                                                                                onChange={(e) => {
-                                                                                    const newValue = e.target.value;
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.noAirDirectionValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            material: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            noAirDirectionValue:
-                                                                                                updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value="BrickPlaster">
-                                                                                    ผนังอิฐฉาบปูน
-                                                                                </MenuItem>
-                                                                                <MenuItem value="WallwithInsulation">
-                                                                                    ผนังมีฉนวนตรงกลาง
-                                                                                </MenuItem>
-                                                                                <MenuItem value="Prefabricated">
-                                                                                    ผนังสำเร็จรูป
-                                                                                </MenuItem>
-                                                                                <MenuItem value="Glass">กระจก</MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                disabled={item.material !== "Glass"}
-                                                                                value={item.glassType}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = e.target.value;
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.noAirDirectionValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            glassType: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            noAirDirectionValue:
-                                                                                                updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={"SingleGlazing"}>
-                                                                                    กระจกใสธรรมดา
-                                                                                </MenuItem>
-                                                                                <MenuItem value={"Tinted"}>
-                                                                                    กระจกสี
-                                                                                </MenuItem>
-                                                                                <MenuItem value={"Low-E"}>
-                                                                                    กระจก Low-E
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                disabled={
-                                                                                    !(
-                                                                                        item.directionName === "Top" ||
-                                                                                        item.directionName === "Bottom"
-                                                                                    )
-                                                                                }
-                                                                                value={item.haveInsulation}
-                                                                                onChange={(e) => {
-                                                                                    const newValue =
-                                                                                        e.target.value === "true";
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.noAirDirectionValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            haveInsulation: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            noAirDirectionValue:
-                                                                                                updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={"true"}>มี</MenuItem>
-                                                                                <MenuItem value={"false"}>
-                                                                                    ไม่มี
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                disabled={
-                                                                                    !(
-                                                                                        item.directionName === "Top" ||
-                                                                                        item.directionName === "Bottom"
-                                                                                    )
-                                                                                }
-                                                                                value={item.haveCeiling}
-                                                                                onChange={(e) => {
-                                                                                    const newValue =
-                                                                                        e.target.value === "true";
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.noAirDirectionValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            haveCeiling: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            noAirDirectionValue:
-                                                                                                updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={"true"}>มี</MenuItem>
-                                                                                <MenuItem value={"false"}>
-                                                                                    ไม่มี
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-                                                                    </Table.Row>
-                                                                );
-                                                            })}
-                                                        </Table.Body>
-                                                    </Table.Root>
-                                                </Field.Root>
-                                            </GridItem>
-                                        </Collapse>
-                                    </Grid>
-                                </GridItem>
-
-                                {/* Roof */}
-                                {/* <Collapse
-                                    in={formData.roomPosition === "Top"}
-                                    timeout={400}
-                                    unmountOnExit
-                                >
-                                    
-                                </Collapse> */}
-                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} height={"100%"}>
-                                    <Grid gap={5}>
-                                        <GridItem>
-                                            <Field.Root>
-                                                <Field.Label>หลังคา (Roof)</Field.Label>
-                                                <Field.Label>ระบุข้อมูลหลังคา</Field.Label>
-                                                <Table.Root size="sm" variant={"outline"}>
-                                                    <Table.Header>
-                                                        <Table.Row>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                วัสดุ
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                สีภายนอก
-                                                            </Table.ColumnHeader>
-                                                        </Table.Row>
-                                                    </Table.Header>
-                                                    <Table.Body>
-                                                        <Table.Row>
-                                                            <Table.Cell>
-                                                                <FormControl fullWidth>
-                                                                    <Select
-                                                                        displayEmpty
-                                                                        value={formData.roofType}
-                                                                        onChange={(e) =>
-                                                                            setFormData((prev) => ({
-                                                                                ...prev,
-                                                                                roofType: e.target.value,
-                                                                            }))
-                                                                        }
-                                                                    >
-                                                                        <MenuItem value={"Concrete"}>
-                                                                            หลังคาคอนกรีต
-                                                                        </MenuItem>
-                                                                        <MenuItem value={"ConcreteTile"}>
-                                                                            หลังคากระเบื้องคอนกรีต
-                                                                        </MenuItem>
-                                                                        <MenuItem value={"MetalSheet"}>
-                                                                            หลังคาเมทัลชีท
-                                                                        </MenuItem>
-                                                                    </Select>
-                                                                </FormControl>
-                                                            </Table.Cell>
-                                                            <Table.Cell>
-                                                                <FormControl fullWidth>
-                                                                    <Select
-                                                                        displayEmpty
-                                                                        value={formData.kRoofColor}
-                                                                        onChange={(e) =>
-                                                                            setFormData((prev) => ({
-                                                                                ...prev,
-                                                                                kRoofColor: Number(e.target.value),
-                                                                            }))
-                                                                        }
-                                                                    >
-                                                                        <MenuItem value={0.5}>สีสว่าง</MenuItem>
-                                                                        <MenuItem value={1}>สีเข้ม</MenuItem>
-                                                                    </Select>
-                                                                </FormControl>
-                                                            </Table.Cell>
-                                                        </Table.Row>
-                                                    </Table.Body>
-                                                </Table.Root>
-                                            </Field.Root>
-                                        </GridItem>
-                                    </Grid>
-                                </GridItem>
-
-                                {/* Floor */}
-                                <Collapse
-                                    in={
-                                        formData.buildingType === "Single" ||
-                                        (formData.buildingType === "Multi" && formData.roomPosition === "Bottom")
-                                    }
-                                    timeout={400}
-                                    unmountOnExit
-                                    sx={{ width: "100%" }}
-                                >
-                                    <GridItem
-                                        border={"1px solid #c5c5c6"}
-                                        borderRadius={10}
-                                        padding={5}
-                                        height={"100%"}
-                                        colSpan={2}
-                                    >
-                                        <Grid gap={5}>
-                                            <GridItem>
-                                                <Field.Root>
-                                                    <Field.Label>พื้น (Floor)</Field.Label>
-                                                    <Field.Label>ระบุข้อมูลพื้น</Field.Label>
-                                                    <Table.Root size="sm" variant={"outline"}>
-                                                        <Table.Header>
-                                                            <Table.Row>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    มีฉนวนหรือไม่
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    สูง
                                                                 </Table.ColumnHeader>
                                                             </Table.Row>
                                                         </Table.Header>
                                                         <Table.Body>
                                                             <Table.Row>
                                                                 <Table.Cell>
-                                                                    <FormControl fullWidth>
+                                                                    <Controller
+                                                                        name="width"
+                                                                        control={control}
+                                                                        rules={{
+                                                                            required: "กรุณากรอกความกว้าง",
+                                                                            min: { value: 0, message: "ต้องมากกว่า 0" },
+                                                                        }}
+                                                                        render={({ field, fieldState }) => (
+                                                                            <TextField
+                                                                                {...field}
+                                                                                fullWidth
+                                                                                type="number"
+                                                                                value={field.value ?? ""}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = Number(e.target.value);
+                                                                                    field.onChange(newValue); // อัปเดต react-hook-form
+                                                                                    setFormData((prev) => ({ ...prev, width: newValue })); // อัปเดต state เดิม
+                                                                                }}
+                                                                                error={!!fieldState.error}
+                                                                                helperText={fieldState.error?.message}
+                                                                            />
+                                                                        )}
+                                                                    />
+                                                                </Table.Cell>
+
+                                                                <Table.Cell>
+                                                                    <Controller
+                                                                        name="depth"
+                                                                        control={control}
+                                                                        rules={{
+                                                                            required: "กรุณากรอกความลึก",
+                                                                            min: { value: 0, message: "ต้องมากกว่า 0" },
+                                                                            validate: (value) => {
+                                                                                if (value < formData.width) {
+                                                                                    return "ความลึกต้องไม่น้อยกว่าความกว้าง";
+                                                                                }
+                                                                                return true;
+                                                                            },
+                                                                        }}
+                                                                        render={({ field, fieldState }) => (
+                                                                            <TextField
+                                                                                {...field}
+                                                                                fullWidth
+                                                                                type="number"
+                                                                                value={field.value ?? ""}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = Number(e.target.value);
+                                                                                    field.onChange(newValue);
+                                                                                    setFormData((prev) => ({ ...prev, depth: newValue }));
+                                                                                }}
+                                                                                error={!!fieldState.error}
+                                                                                helperText={fieldState.error?.message}
+                                                                            />
+                                                                        )}
+                                                                    />
+                                                                </Table.Cell>
+
+                                                                <Table.Cell>
+                                                                    <Controller
+                                                                        name="height"
+                                                                        control={control}
+                                                                        rules={{
+                                                                            required: "กรุณากรอกความสูง",
+                                                                            min: { value: 0, message: "ต้องมากกว่า 0" },
+                                                                        }}
+                                                                        render={({ field, fieldState }) => (
+                                                                            <TextField
+                                                                                {...field}
+                                                                                fullWidth
+                                                                                type="number"
+                                                                                value={field.value ?? ""}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = Number(e.target.value);
+                                                                                    field.onChange(newValue);
+                                                                                    setFormData((prev) => ({ ...prev, height: newValue }));
+                                                                                }}
+                                                                                error={!!fieldState.error}
+                                                                                helperText={fieldState.error?.message}
+                                                                            />
+                                                                        )}
+                                                                    />
+                                                                </Table.Cell>
+                                                            </Table.Row>
+                                                        </Table.Body>
+                                                    </Table.Root>
+                                                </Field.Root>
+                                            </GridItem>
+                                            <GridItem colSpan={1}>
+                                                <Field.Root>
+                                                    <Field.Label>ช่วงเวลาที่ใช้งาน</Field.Label>
+                                                    <Grid templateColumns="repeat(2, 1fr)" width={"100%"} gap={3}>
+                                                        {/* เวลาเริ่มต้น */}
+                                                        <GridItem colSpan={1}>
+                                                            <Controller
+                                                                name="startTime"
+                                                                control={control}
+                                                                rules={{ required: "กรุณาเลือกเวลาเริ่มต้น" }}
+                                                                render={({ field }) => (
+                                                                    <FormControl fullWidth error={!!errors.startTime}>
                                                                         <Select
+                                                                            {...field}
                                                                             displayEmpty
-                                                                            sx={{ width: "100%" }}
-                                                                            value={formData.floorValue.uFloor}
                                                                             onChange={(e) => {
-                                                                                const newValue = Number(e.target.value);
+                                                                                field.onChange(e); // อัปเดต react-hook-form
                                                                                 setFormData((prev) => ({
                                                                                     ...prev,
-                                                                                    floorValue: {
-                                                                                        ...prev.floorValue,
-                                                                                        uFloor: newValue,
-                                                                                    },
+                                                                                    startTime: e.target.value, // อัปเดต state เก่าด้วย
                                                                                 }));
                                                                             }}
                                                                         >
-                                                                            <MenuItem value={0.92}>มี</MenuItem>
-                                                                            <MenuItem value={3.8}>ไม่มี</MenuItem>
+                                                                            <MenuItem value="">
+                                                                                <em>เลือกเวลาเริ่มต้น</em>
+                                                                            </MenuItem>
+                                                                            {hourOptions.map((item, index) => (
+                                                                                <MenuItem key={index} value={item.value}>
+                                                                                    {item.label}
+                                                                                </MenuItem>
+                                                                            ))}
                                                                         </Select>
+                                                                        {errors.startTime && (
+                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                {errors.startTime.message}
+                                                                            </p>
+                                                                        )}
                                                                     </FormControl>
+                                                                )}
+                                                            />
+                                                        </GridItem>
+
+                                                        {/* เวลาสิ้นสุด */}
+                                                        <GridItem colSpan={1}>
+                                                            <Controller
+                                                                name="endTime"
+                                                                control={control}
+                                                                rules={{ required: "กรุณาเลือกเวลาสิ้นสุด" }}
+                                                                render={({ field }) => (
+                                                                    <FormControl fullWidth error={!!errors.endTime}>
+                                                                        <Select
+                                                                            {...field}
+                                                                            displayEmpty
+                                                                            onChange={(e) => {
+                                                                                field.onChange(e); // อัปเดต react-hook-form
+                                                                                setFormData((prev) => ({
+                                                                                    ...prev,
+                                                                                    endTime: e.target.value, // อัปเดต state เดิม
+                                                                                }));
+                                                                            }}
+                                                                        >
+                                                                            <MenuItem value="">
+                                                                                <em>เลือกเวลาสิ้นสุด</em>
+                                                                            </MenuItem>
+                                                                            {hourOptions.map((item, index) => (
+                                                                                <MenuItem key={index} value={item.value}>
+                                                                                    {item.label}
+                                                                                </MenuItem>
+                                                                            ))}
+                                                                        </Select>
+                                                                        {errors.endTime && (
+                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                {errors.endTime.message}
+                                                                            </p>
+                                                                        )}
+                                                                    </FormControl>
+                                                                )}
+                                                            />
+                                                        </GridItem>
+                                                    </Grid>
+                                                </Field.Root>
+                                            </GridItem>
+
+                                            <GridItem colSpan={1}>
+                                                <Grid gridTemplateColumns={"repeat(2, 1fr)"} gap={5}>
+                                                    <GridItem colSpan={1}>
+                                                        <Field.Root>
+                                                            <Field.Label>มีพื้นที่ฝ้าเพดานหรือไม่</Field.Label>
+                                                            <Controller
+                                                                name="ceiling"
+                                                                control={control}
+                                                                rules={{ required: "กรุณาเลือกชนิดฝ้า" }}
+                                                                render={({ field }) => (
+                                                                    <FormControl fullWidth error={!!errors.ceiling}>
+                                                                        <Select
+                                                                            {...field}
+                                                                            displayEmpty
+                                                                            onChange={(e) => {
+                                                                                field.onChange(e); // อัปเดต react-hook-form
+                                                                                setFormData((prev) => ({
+                                                                                    ...prev,
+                                                                                    ceiling: e.target.value, // อัปเดต state เดิมด้วย
+                                                                                }));
+                                                                            }}
+                                                                        >
+                                                                            <MenuItem value="">
+                                                                                <em>เลือกชนิดฝ้า</em>
+                                                                            </MenuItem>
+                                                                            <MenuItem value="HaveCeilinglessthan">มีน้อยกว่า 30 cm</MenuItem>
+                                                                            <MenuItem value="HaveCeilinggreaterthan">มีมากกว่า 30 cm</MenuItem>
+                                                                            <MenuItem value="NoCeiling">ไม่มีฝ้า</MenuItem>
+                                                                        </Select>
+                                                                        {errors.ceiling && (
+                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                {errors.ceiling.message}
+                                                                            </p>
+                                                                        )}
+                                                                    </FormControl>
+                                                                )}
+                                                            />
+                                                        </Field.Root>
+                                                    </GridItem>
+                                                    <GridItem colSpan={1}>
+                                                        <Field.Root>
+                                                            <Field.Label>ความสูงเพดาน (จากพื้นถึงฝ้าเพดาน)</Field.Label>
+                                                            <Controller
+                                                                name="ceilingHeight"
+                                                                control={control}
+                                                                rules={{ required: "กรุณาเลือกความสูงฝ้า" }}
+                                                                render={({ field }) => (
+                                                                    <FormControl fullWidth error={!!errors.ceilingHeight}>
+                                                                        <Select
+                                                                            {...field}
+                                                                            displayEmpty
+                                                                            onChange={(e) => {
+                                                                                field.onChange(e); // อัปเดต react-hook-form
+                                                                                setFormData((prev) => ({
+                                                                                    ...prev,
+                                                                                    ceilingHeight: e.target.value, // อัปเดต state เก่าด้วย
+                                                                                }));
+                                                                            }}
+                                                                        >
+                                                                            <MenuItem value="">
+                                                                                <em>เลือกความสูงฝ้า</em>
+                                                                            </MenuItem>
+                                                                            <MenuItem value="Low">ต่ำ (2-2.5)</MenuItem>
+                                                                            <MenuItem value="Middle">กลาง (2.5-3)</MenuItem>
+                                                                            <MenuItem value="High">สูง (&gt;3)</MenuItem>
+                                                                            <MenuItem value="OverHigh">สูงมาก (&gt;4)</MenuItem>
+                                                                        </Select>
+                                                                        {errors.ceilingHeight && (
+                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                {errors.ceilingHeight.message}
+                                                                            </p>
+                                                                        )}
+                                                                    </FormControl>
+                                                                )}
+                                                            />
+                                                        </Field.Root>
+                                                    </GridItem>
+                                                </Grid>
+                                            </GridItem>
+
+                                            <GridItem colSpan={1}>
+                                                <Field.Root>
+                                                    <Field.Label>ประเภทอาคาร</Field.Label>
+                                                    <Controller
+                                                        name="buildingType"
+                                                        control={control}
+                                                        rules={{ required: "กรุณาเลือกประเภทอาคาร" }}
+                                                        render={({ field }) => (
+                                                            <FormControl fullWidth error={!!errors.buildingType}>
+                                                                <Select
+                                                                    {...field}
+                                                                    displayEmpty
+                                                                    onChange={(e) => {
+                                                                        field.onChange(e); // อัปเดต react-hook-form
+                                                                        setFormData((prev) => ({
+                                                                            ...prev,
+                                                                            buildingType: e.target.value, // อัปเดต state เก่าด้วย
+                                                                        }));
+                                                                    }}
+                                                                >
+                                                                    <MenuItem value="">
+                                                                        <em>เลือกประเภทอาคาร</em>
+                                                                    </MenuItem>
+                                                                    <MenuItem value="Single">อาคารชั้นเดียว</MenuItem>
+                                                                    <MenuItem value="Multi">อาคารหลายชั้น</MenuItem>
+                                                                </Select>
+                                                                {errors.buildingType && (
+                                                                    <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                        {errors.buildingType.message}
+                                                                    </p>
+                                                                )}
+                                                            </FormControl>
+                                                        )}
+                                                    />
+                                                </Field.Root>
+                                            </GridItem>
+
+                                            <Collapse in={formData.buildingType === "Multi"} timeout={400} unmountOnExit>
+                                                <GridItem colSpan={1}>
+                                                    <Field.Root>
+                                                        <Field.Label>ตำแหน่งห้อง</Field.Label>
+                                                        <Controller
+                                                            name="roomPosition"
+                                                            control={control}
+                                                            rules={{ required: "กรุณาเลือกตำแหน่งห้อง" }}
+                                                            render={({ field }) => (
+                                                                <FormControl fullWidth error={!!errors.roomPosition}>
+                                                                    <Select
+                                                                        {...field}
+                                                                        displayEmpty
+                                                                        onChange={(e) => {
+                                                                            field.onChange(e); // อัปเดต react-hook-form
+                                                                            setFormData((prev) => ({
+                                                                                ...prev,
+                                                                                roomPosition: e.target.value, // อัปเดต state เดิม
+                                                                            }));
+                                                                        }}
+                                                                    >
+                                                                        <MenuItem value="">
+                                                                            <em>เลือกตำแหน่งห้อง</em>
+                                                                        </MenuItem>
+                                                                        <MenuItem value="Top">ชั้นบนสุด</MenuItem>
+                                                                        <MenuItem value="Middle">ระหว่างชั้น</MenuItem>
+                                                                        <MenuItem value="Bottom">ชั้นล่างสุด</MenuItem>
+                                                                    </Select>
+                                                                    {errors.roomPosition && (
+                                                                        <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                            {errors.roomPosition.message}
+                                                                        </p>
+                                                                    )}
+                                                                </FormControl>
+                                                            )}
+                                                        />
+                                                    </Field.Root>
+                                                </GridItem>
+                                            </Collapse>
+                                        </Grid>
+                                    </GridItem>
+
+                                    {/* Wall */}
+                                    <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
+                                        <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
+                                            <GridItem>
+                                                <Field.Root>
+                                                    <Field.Label>ผนัง (wall)</Field.Label>
+                                                    <Field.Label>
+                                                        ระบุทิศผนังภายนอกหรือผนังด้านที่ไม่อยู่ในอาคาร (เลือกได้มากกว่า1)
+                                                    </Field.Label>
+                                                    <Controller
+                                                        name="wallValue"
+                                                        control={control}
+                                                        rules={{ required: "กรุณาเลือกทิศผนังอย่างน้อย 1 ด้าน" }}
+                                                        render={({ field }) => (
+                                                            <FormControl fullWidth error={!!errors.wallValue}>
+                                                                <Select
+                                                                    multiple
+                                                                    displayEmpty
+                                                                    input={<OutlinedInput />}
+                                                                    value={formData.wallValue.map((d) => d.directionName)}
+                                                                    onChange={(e) => handleWallDirectionChange(e, field)}
+                                                                    renderValue={(selected) => (
+                                                                        <Box display="flex" flexWrap="wrap" gap={0.5}>
+                                                                            {selected.map((value) => (
+                                                                                <Chip key={value} label={value} />
+                                                                            ))}
+                                                                        </Box>
+                                                                    )}
+                                                                >
+                                                                    {directions.map((item, index) => (
+                                                                        <MenuItem key={index} value={item.value}>
+                                                                            {item.label}
+                                                                        </MenuItem>
+                                                                    ))}
+                                                                </Select>
+                                                                {errors.wallValue && (
+                                                                    <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                        {errors.wallValue.message}
+                                                                    </p>
+                                                                )}
+                                                            </FormControl>
+                                                        )}
+                                                    />
+                                                </Field.Root>
+                                            </GridItem>
+
+                                            <Collapse
+                                                in={
+                                                    formData.wallValue.length > 0 &&
+                                                    formData.wallValue[0].directionName !== "None"
+                                                }
+                                                timeout={400}
+                                                unmountOnExit
+                                            >
+                                                <GridItem>
+                                                    <Field.Root>
+                                                        <Field.Label>ระบุข้อมูลผนัง</Field.Label>
+                                                        <Table.Root size="sm" variant={"outline"}>
+                                                            <Table.Header>
+                                                                <Table.Row>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ทิศทาง
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ตำแหน่ง
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        วัสดุ
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ชนิดกระจก
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        กันสาด
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ม่านบังแดด
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        สีภายนอก
+                                                                    </Table.ColumnHeader>
+                                                                </Table.Row>
+                                                            </Table.Header>
+                                                            <Table.Body>
+                                                                {formData.wallValue.map((item, index) => (
+                                                                    <Table.Row key={index}>
+                                                                        {/* แสดงชื่อทิศ */}
+                                                                        <Table.Cell textAlign="center">
+                                                                            {directions.find((d) => d.value === item.directionName)?.label}
+                                                                        </Table.Cell>
+
+                                                                        {/* Position */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`wallValue.${index}.position`}
+                                                                                control={control}
+                                                                                rules={{ required: "กรุณาเลือกตำแหน่ง" }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                field.onChange(e);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.wallValue];
+                                                                                                    updated[index] = { ...updated[index], position: e.target.value };
+                                                                                                    return { ...prev, wallValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="">
+                                                                                                <em>เลือกตำแหน่ง</em>
+                                                                                            </MenuItem>
+                                                                                            <MenuItem value="Width">ด้านกว้าง</MenuItem>
+                                                                                            <MenuItem value="Depth">ด้านยาว</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* Material */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`wallValue.${index}.material`}
+                                                                                control={control}
+                                                                                rules={{ required: "กรุณาเลือกวัสดุ" }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                field.onChange(e);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.wallValue];
+                                                                                                    updated[index] = { ...updated[index], material: e.target.value };
+                                                                                                    return { ...prev, wallValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="BrickPlaster">ผนังอิฐฉาบปูน</MenuItem>
+                                                                                            <MenuItem value="WallwithInsulation">ผนังมีฉนวนตรงกลาง</MenuItem>
+                                                                                            <MenuItem value="Prefabricated">ผนังสำเร็จรูป</MenuItem>
+                                                                                            <MenuItem value="Glass">กระจก</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* Glass Type */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`wallValue.${index}.glassType`}
+                                                                                control={control}
+                                                                                rules={{
+                                                                                    required: item.material === "Glass" ? "กรุณาเลือกชนิดกระจก" : false,
+                                                                                }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error} disabled={item.material !== "Glass"}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                field.onChange(e);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.wallValue];
+                                                                                                    updated[index] = { ...updated[index], glassType: e.target.value };
+                                                                                                    return { ...prev, wallValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="SingleGlazing">กระจกใสธรรมดา</MenuItem>
+                                                                                            <MenuItem value="Tinted">กระจกสี</MenuItem>
+                                                                                            <MenuItem value="Low-E">กระจก Low-E</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* Have Shade */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`wallValue.${index}.haveShade`}
+                                                                                control={control}
+                                                                                rules={{
+                                                                                    required: item.material === "Glass" ? "กรุณาเลือกว่ามีกันแดดหรือไม่" : false,
+                                                                                }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error} disabled={item.material !== "Glass"}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                const newValue = e.target.value === "true";
+                                                                                                field.onChange(newValue);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.wallValue];
+                                                                                                    updated[index] = { ...updated[index], haveShade: newValue };
+                                                                                                    return { ...prev, wallValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="true">มี</MenuItem>
+                                                                                            <MenuItem value="false">ไม่มี</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* Have Curtain */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`wallValue.${index}.haveCurtain`}
+                                                                                control={control}
+                                                                                rules={{
+                                                                                    required: item.material === "Glass" ? "กรุณาเลือกว่ามีผ้าม่านหรือไม่" : false,
+                                                                                }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error} disabled={item.material !== "Glass"}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                const newValue = e.target.value === "true";
+                                                                                                field.onChange(newValue);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.wallValue];
+                                                                                                    updated[index] = { ...updated[index], haveCurtain: newValue };
+                                                                                                    return { ...prev, wallValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="true">มี</MenuItem>
+                                                                                            <MenuItem value="false">ไม่มี</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* kWallColor */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`wallValue.${index}.kWallColor`}
+                                                                                control={control}
+                                                                                rules={{ required: "กรุณาเลือกสีผนัง" }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                const newValue = Number(e.target.value);
+                                                                                                field.onChange(newValue);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.wallValue];
+                                                                                                    updated[index] = { ...updated[index], kWallColor: newValue };
+                                                                                                    return { ...prev, wallValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value={0.65}>สีสว่าง</MenuItem>
+                                                                                            <MenuItem value={1}>สีเข้ม</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+                                                                    </Table.Row>
+                                                                ))}
+
+                                                            </Table.Body>
+                                                        </Table.Root>
+                                                    </Field.Root>
+                                                </GridItem>
+                                            </Collapse>
+                                        </Grid>
+                                    </GridItem>
+
+                                    {/* NoAirDirection */}
+                                    <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
+                                        <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
+                                            <GridItem>
+                                                <Field.Root>
+                                                    <Field.Label>สภาพแวดล้อมภายในอาคาร</Field.Label>
+                                                    <Field.Label>
+                                                        ระบุอีกฝั่งของผนังที่ไม่ได้ติดตั้งเครื่องวปรับอากาศ
+                                                        (เฉพาะผนังที่ติดกับห้องอื่น และเลือกได้มากกว่า1)
+                                                    </Field.Label>
+                                                    <Controller
+                                                        name="noAirDirectionValue"
+                                                        control={control}
+                                                        rules={{ required: "กรุณาเลือกทิศทางเครื่องปรับอากาศอย่างน้อย 1 ด้าน" }}
+                                                        render={({ field }) => (
+                                                            <FormControl fullWidth error={!!errors.noAirDirectionValue}>
+                                                                <Select
+                                                                    multiple
+                                                                    displayEmpty
+                                                                    input={<OutlinedInput />}
+                                                                    value={formData.noAirDirectionValue.map((d) => d.directionName)}
+                                                                    onChange={(e) => handleNoAirDirectionChange(e, field)}
+                                                                    renderValue={(selected) => (
+                                                                        <Box display="flex" flexWrap="wrap" gap={0.5}>
+                                                                            {selected?.map((value) => (
+                                                                                <Chip key={value} label={value} />
+                                                                            ))}
+                                                                        </Box>
+                                                                    )}
+                                                                >
+                                                                    {(formData.buildingType === "Multi" ? roomSides : directions).map((item, index) => (
+                                                                        <MenuItem key={index} value={item.value}>
+                                                                            {item.label}
+                                                                        </MenuItem>
+                                                                    ))}
+                                                                </Select>
+                                                                {errors.noAirDirectionValue && (
+                                                                    <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                        {errors.noAirDirectionValue.message}
+                                                                    </p>
+                                                                )}
+                                                            </FormControl>
+                                                        )}
+                                                    />
+                                                </Field.Root>
+                                            </GridItem>
+
+                                            <Collapse
+                                                in={
+                                                    formData.noAirDirectionValue.length > 0 &&
+                                                    formData.noAirDirectionValue[0].directionName !== "None"
+                                                }
+                                                timeout={400}
+                                                unmountOnExit
+                                            >
+                                                <GridItem>
+                                                    <Field.Root>
+                                                        <Field.Label>ระบุข้อมูลผนัง</Field.Label>
+                                                        <Table.Root size="sm" variant={"outline"}>
+                                                            <Table.Header>
+                                                                <Table.Row>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ทิศทาง
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ตำแหน่ง
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        วัสดุ
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ชนิดกระจก
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ฉนวนกันความร้อน
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ฝ้าเพดาน
+                                                                    </Table.ColumnHeader>
+                                                                </Table.Row>
+                                                            </Table.Header>
+                                                            <Table.Body>
+                                                                {formData.noAirDirectionValue.map((item, index) => {
+                                                                    return (
+                                                                        <Table.Row key={index}>
+                                                                            <Table.Cell textAlign={"center"}>
+                                                                                {
+                                                                                    roomSides.find(
+                                                                                        (d) =>
+                                                                                            d.value === item.directionName
+                                                                                    )?.label
+                                                                                }
+                                                                            </Table.Cell>
+
+                                                                            <Table.Cell>
+                                                                                <Select
+                                                                                    displayEmpty
+                                                                                    sx={{
+                                                                                        width: "100%",
+                                                                                    }}
+                                                                                    value={item.position ?? ""}
+                                                                                    disabled={
+                                                                                        item.directionName === "Top" ||
+                                                                                        item.directionName === "Bottom"
+                                                                                    }
+                                                                                    onChange={(e) => {
+                                                                                        const newValue = e.target.value;
+                                                                                        setFormData((prev) => {
+                                                                                            const updated = [
+                                                                                                ...prev.noAirDirectionValue,
+                                                                                            ];
+                                                                                            updated[index] = {
+                                                                                                ...updated[index],
+                                                                                                position: newValue,
+                                                                                            };
+                                                                                            return {
+                                                                                                ...prev,
+                                                                                                noAirDirectionValue:
+                                                                                                    updated,
+                                                                                            };
+                                                                                        });
+                                                                                    }}
+                                                                                >
+                                                                                    <MenuItem value="Width">
+                                                                                        ด้านกว้าง
+                                                                                    </MenuItem>
+                                                                                    <MenuItem value="Depth">
+                                                                                        ด้านยาว
+                                                                                    </MenuItem>
+                                                                                </Select>
+                                                                            </Table.Cell>
+
+                                                                            <Table.Cell>
+                                                                                <Select
+                                                                                    displayEmpty
+                                                                                    sx={{
+                                                                                        width: "100%",
+                                                                                    }}
+                                                                                    value={item.material}
+                                                                                    disabled={
+                                                                                        item.directionName === "Top" ||
+                                                                                        item.directionName === "Bottom"
+                                                                                    }
+                                                                                    onChange={(e) => {
+                                                                                        const newValue = e.target.value;
+                                                                                        setFormData((prev) => {
+                                                                                            const updated = [
+                                                                                                ...prev.noAirDirectionValue,
+                                                                                            ];
+                                                                                            updated[index] = {
+                                                                                                ...updated[index],
+                                                                                                material: newValue,
+                                                                                            };
+                                                                                            return {
+                                                                                                ...prev,
+                                                                                                noAirDirectionValue:
+                                                                                                    updated,
+                                                                                            };
+                                                                                        });
+                                                                                    }}
+                                                                                >
+                                                                                    <MenuItem value="BrickPlaster">
+                                                                                        ผนังอิฐฉาบปูน
+                                                                                    </MenuItem>
+                                                                                    <MenuItem value="WallwithInsulation">
+                                                                                        ผนังมีฉนวนตรงกลาง
+                                                                                    </MenuItem>
+                                                                                    <MenuItem value="Prefabricated">
+                                                                                        ผนังสำเร็จรูป
+                                                                                    </MenuItem>
+                                                                                    <MenuItem value="Glass">กระจก</MenuItem>
+                                                                                </Select>
+                                                                            </Table.Cell>
+
+                                                                            <Table.Cell>
+                                                                                <Select
+                                                                                    displayEmpty
+                                                                                    sx={{
+                                                                                        width: "100%",
+                                                                                    }}
+                                                                                    disabled={item.material !== "Glass"}
+                                                                                    value={item.glassType}
+                                                                                    onChange={(e) => {
+                                                                                        const newValue = e.target.value;
+                                                                                        setFormData((prev) => {
+                                                                                            const updated = [
+                                                                                                ...prev.noAirDirectionValue,
+                                                                                            ];
+                                                                                            updated[index] = {
+                                                                                                ...updated[index],
+                                                                                                glassType: newValue,
+                                                                                            };
+                                                                                            return {
+                                                                                                ...prev,
+                                                                                                noAirDirectionValue:
+                                                                                                    updated,
+                                                                                            };
+                                                                                        });
+                                                                                    }}
+                                                                                >
+                                                                                    <MenuItem value={"SingleGlazing"}>
+                                                                                        กระจกใสธรรมดา
+                                                                                    </MenuItem>
+                                                                                    <MenuItem value={"Tinted"}>
+                                                                                        กระจกสี
+                                                                                    </MenuItem>
+                                                                                    <MenuItem value={"Low-E"}>
+                                                                                        กระจก Low-E
+                                                                                    </MenuItem>
+                                                                                </Select>
+                                                                            </Table.Cell>
+
+                                                                            <Table.Cell>
+                                                                                <Select
+                                                                                    displayEmpty
+                                                                                    sx={{
+                                                                                        width: "100%",
+                                                                                    }}
+                                                                                    disabled={
+                                                                                        !(
+                                                                                            item.directionName === "Top" ||
+                                                                                            item.directionName === "Bottom"
+                                                                                        )
+                                                                                    }
+                                                                                    value={item.haveInsulation}
+                                                                                    onChange={(e) => {
+                                                                                        const newValue =
+                                                                                            e.target.value === "true";
+                                                                                        setFormData((prev) => {
+                                                                                            const updated = [
+                                                                                                ...prev.noAirDirectionValue,
+                                                                                            ];
+                                                                                            updated[index] = {
+                                                                                                ...updated[index],
+                                                                                                haveInsulation: newValue,
+                                                                                            };
+                                                                                            return {
+                                                                                                ...prev,
+                                                                                                noAirDirectionValue:
+                                                                                                    updated,
+                                                                                            };
+                                                                                        });
+                                                                                    }}
+                                                                                >
+                                                                                    <MenuItem value={"true"}>มี</MenuItem>
+                                                                                    <MenuItem value={"false"}>
+                                                                                        ไม่มี
+                                                                                    </MenuItem>
+                                                                                </Select>
+                                                                            </Table.Cell>
+
+                                                                            <Table.Cell>
+                                                                                <Select
+                                                                                    displayEmpty
+                                                                                    sx={{
+                                                                                        width: "100%",
+                                                                                    }}
+                                                                                    disabled={
+                                                                                        !(
+                                                                                            item.directionName === "Top" ||
+                                                                                            item.directionName === "Bottom"
+                                                                                        )
+                                                                                    }
+                                                                                    value={item.haveCeiling}
+                                                                                    onChange={(e) => {
+                                                                                        const newValue =
+                                                                                            e.target.value === "true";
+                                                                                        setFormData((prev) => {
+                                                                                            const updated = [
+                                                                                                ...prev.noAirDirectionValue,
+                                                                                            ];
+                                                                                            updated[index] = {
+                                                                                                ...updated[index],
+                                                                                                haveCeiling: newValue,
+                                                                                            };
+                                                                                            return {
+                                                                                                ...prev,
+                                                                                                noAirDirectionValue:
+                                                                                                    updated,
+                                                                                            };
+                                                                                        });
+                                                                                    }}
+                                                                                >
+                                                                                    <MenuItem value={"true"}>มี</MenuItem>
+                                                                                    <MenuItem value={"false"}>
+                                                                                        ไม่มี
+                                                                                    </MenuItem>
+                                                                                </Select>
+                                                                            </Table.Cell>
+                                                                        </Table.Row>
+                                                                    );
+                                                                })}
+                                                            </Table.Body>
+                                                        </Table.Root>
+                                                    </Field.Root>
+                                                </GridItem>
+                                            </Collapse>
+                                        </Grid>
+                                    </GridItem>
+
+                                    {/* Roof */}
+                                    <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} height={"100%"}>
+                                        <Grid gap={5}>
+                                            <GridItem>
+                                                <Field.Root>
+                                                    <Field.Label>หลังคา (Roof)</Field.Label>
+                                                    <Field.Label>ระบุข้อมูลหลังคา</Field.Label>
+                                                    <Table.Root size="sm" variant={"outline"}>
+                                                        <Table.Header>
+                                                            <Table.Row>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    วัสดุ
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    สีภายนอก
+                                                                </Table.ColumnHeader>
+                                                            </Table.Row>
+                                                        </Table.Header>
+                                                        <Table.Body>
+                                                            <Table.Row>
+                                                                {/* Roof Type */}
+                                                                <Table.Cell>
+                                                                    <Controller
+                                                                        name="roofType"
+                                                                        control={control}
+                                                                        rules={{ required: "กรุณาเลือกประเภทหลังคา" }}
+                                                                        render={({ field, fieldState }) => (
+                                                                            <FormControl fullWidth error={!!fieldState.error}>
+                                                                                <Select
+                                                                                    {...field}
+                                                                                    displayEmpty
+                                                                                    onChange={(e) => {
+                                                                                        field.onChange(e.target.value); // อัปเดต react-hook-form
+                                                                                        setFormData((prev) => ({
+                                                                                            ...prev,
+                                                                                            roofType: e.target.value, // อัปเดต state
+                                                                                        }));
+                                                                                    }}
+                                                                                >
+                                                                                    <MenuItem value="Concrete">หลังคาคอนกรีต</MenuItem>
+                                                                                    <MenuItem value="ConcreteTile">หลังคากระเบื้องคอนกรีต</MenuItem>
+                                                                                    <MenuItem value="MetalSheet">หลังคาเมทัลชีท</MenuItem>
+                                                                                </Select>
+                                                                                {fieldState.error && (
+                                                                                    <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                        {fieldState.error.message}
+                                                                                    </p>
+                                                                                )}
+                                                                            </FormControl>
+                                                                        )}
+                                                                    />
+                                                                </Table.Cell>
+
+                                                                {/* Roof Color */}
+                                                                <Table.Cell>
+                                                                    <Controller
+                                                                        name="kRoofColor"
+                                                                        control={control}
+                                                                        rules={{ required: "กรุณาเลือกสีหลังคา" }}
+                                                                        render={({ field, fieldState }) => (
+                                                                            <FormControl fullWidth error={!!fieldState.error}>
+                                                                                <Select
+                                                                                    {...field}
+                                                                                    displayEmpty
+                                                                                    onChange={(e) => {
+                                                                                        const newValue = Number(e.target.value);
+                                                                                        field.onChange(newValue); // อัปเดต react-hook-form
+                                                                                        setFormData((prev) => ({
+                                                                                            ...prev,
+                                                                                            kRoofColor: newValue, // อัปเดต state
+                                                                                        }));
+                                                                                    }}
+                                                                                >
+                                                                                    <MenuItem value={0.5}>สีสว่าง</MenuItem>
+                                                                                    <MenuItem value={1}>สีเข้ม</MenuItem>
+                                                                                </Select>
+                                                                                {fieldState.error && (
+                                                                                    <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                        {fieldState.error.message}
+                                                                                    </p>
+                                                                                )}
+                                                                            </FormControl>
+                                                                        )}
+                                                                    />
                                                                 </Table.Cell>
                                                             </Table.Row>
                                                         </Table.Body>
@@ -3128,774 +3322,920 @@ function MainPage() {
                                             </GridItem>
                                         </Grid>
                                     </GridItem>
-                                </Collapse>
 
-                                {/* Door Direction */}
-                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
-                                    <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
-                                        <GridItem>
-                                            <Field.Root>
-                                                <Field.Label>ประตู (Door)</Field.Label>
-                                                <Field.Label>ระบุทิศทาง (เลือกได้มากกว่า1)</Field.Label>
-                                                <FormControl sx={{ width: "100%" }}>
-                                                    <Select
-                                                        displayEmpty
-                                                        multiple
-                                                        value={formData.doorValue.map((d) => d.directionName)}
-                                                        onChange={handleDoorDirectionChange}
-                                                        input={<OutlinedInput />}
-                                                        renderValue={(selected) => (
-                                                            <Box display={"flex"} flexWrap={"wrap"} gap={0.5}>
-                                                                {selected?.map((value) => (
-                                                                    <Chip key={value} label={value} />
-                                                                ))}
-                                                            </Box>
-                                                        )}
-                                                    >
-                                                        {directions.map((item, index) => (
-                                                            <MenuItem key={index} value={item.value}>
-                                                                {item.label}
-                                                            </MenuItem>
-                                                        ))}
-                                                    </Select>
-                                                </FormControl>
-                                            </Field.Root>
-                                        </GridItem>
-
-                                        <Collapse
-                                            in={
-                                                formData.doorValue.length > 0 &&
-                                                formData.doorValue[0].directionName !== "None"
-                                            }
-                                            timeout={400}
-                                            unmountOnExit
-                                        >
-                                            <GridItem>
-                                                <Field.Root>
-                                                    <Field.Label>ระบุข้อมูลประตู</Field.Label>
-                                                    <Table.Root size="sm" variant={"outline"}>
-                                                        <Table.Header>
-                                                            <Table.Row>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ทิศทาง
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ประเภท
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    วัสดุ
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ชนิดกระจก
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    กันสาด
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ม่านบังแดด
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    จำนวน
-                                                                </Table.ColumnHeader>
-                                                            </Table.Row>
-                                                        </Table.Header>
-                                                        <Table.Body>
-                                                            {formData.doorValue.map((item, index) => {
-                                                                return (
-                                                                    <Table.Row key={index}>
-                                                                        <Table.Cell textAlign={"center"}>
-                                                                            {
-                                                                                directions.find(
-                                                                                    (d) =>
-                                                                                        d.value === item.directionName
-                                                                                )?.label
-                                                                            }
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                value={item.doorType ?? ""}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = e.target.value;
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.doorValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            doorType: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            doorValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                {doorTypeData.map((doortype, index) => {
-                                                                                    return (
-                                                                                        <MenuItem
-                                                                                            key={index}
-                                                                                            value={doortype.DoorType}
-                                                                                        >
-                                                                                            {
-                                                                                                doorTypeLabelMap[
-                                                                                                doortype.DoorType
-                                                                                                ]
-                                                                                            }
-                                                                                        </MenuItem>
-                                                                                    );
-                                                                                })}
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                value={item.material}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = e.target.value;
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.doorValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            material: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            doorValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={"Glass"}>
-                                                                                    กระจก
-                                                                                </MenuItem>
-                                                                                <MenuItem value={"Other"}>
-                                                                                    อื่น ๆ
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                disabled={item.material !== "Glass"}
-                                                                                value={item.glassType}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = e.target.value;
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.doorValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            glassType: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            doorValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={"SingleGlazing"}>
-                                                                                    กระจกใสธรรมดา
-                                                                                </MenuItem>
-                                                                                <MenuItem value={"Tinted"}>
-                                                                                    กระจกสี
-                                                                                </MenuItem>
-                                                                                <MenuItem value={"Low-E"}>
-                                                                                    กระจก Low-E
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                disabled={item.material !== "Glass"}
-                                                                                value={item.haveShade}
-                                                                                onChange={(e) => {
-                                                                                    const newValue =
-                                                                                        e.target.value === "true";
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.doorValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            haveShade: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            doorValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={"true"}>มี</MenuItem>
-                                                                                <MenuItem value={"false"}>
-                                                                                    ไม่มี
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                disabled={item.material !== "Glass"}
-                                                                                value={item.haveCurtain}
-                                                                                onChange={(e) => {
-                                                                                    const newValue =
-                                                                                        e.target.value === "true";
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.doorValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            haveCurtain: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            doorValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={"true"}>มี</MenuItem>
-                                                                                <MenuItem value={"false"}>
-                                                                                    ไม่มี
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <TextField
-                                                                                type="number"
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                value={item.quantity}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = Number(
-                                                                                        e.target.value
-                                                                                    );
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.doorValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            quantity: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            doorValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            />
-                                                                        </Table.Cell>
-                                                                    </Table.Row>
-                                                                );
-                                                            })}
-                                                        </Table.Body>
-                                                    </Table.Root>
-                                                </Field.Root>
-                                            </GridItem>
-                                        </Collapse>
-                                    </Grid>
-                                </GridItem>
-
-                                {/* Window Direction */}
-                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
-                                    <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
-                                        <GridItem>
-                                            <Field.Root>
-                                                <Field.Label>หน้าต่าง (Window)</Field.Label>
-                                                <Field.Label>ระบุทิศทาง (เลือกได้มากกว่า1)</Field.Label>
-                                                <FormControl sx={{ width: "100%" }}>
-                                                    <Select
-                                                        displayEmpty
-                                                        multiple
-                                                        value={formData.windowValue.map((d) => d.directionName)}
-                                                        onChange={handleWindowDirectionChange}
-                                                        input={<OutlinedInput />}
-                                                        renderValue={(selected) => (
-                                                            <Box display={"flex"} flexWrap={"wrap"} gap={0.5}>
-                                                                {selected?.map((value) => (
-                                                                    <Chip key={value} label={value} />
-                                                                ))}
-                                                            </Box>
-                                                        )}
-                                                    >
-                                                        {directions.map((item, index) => (
-                                                            <MenuItem key={index} value={item.value}>
-                                                                {item.label}
-                                                            </MenuItem>
-                                                        ))}
-                                                    </Select>
-                                                </FormControl>
-                                            </Field.Root>
-                                        </GridItem>
-
-                                        <Collapse
-                                            in={
-                                                formData.windowValue.length > 0 &&
-                                                formData.windowValue[0].directionName !== "None"
-                                            }
-                                            timeout={400}
-                                            unmountOnExit
-                                        >
-                                            <GridItem>
-                                                <Field.Root>
-                                                    <Field.Label>ระบุข้อมูลหน้าต่าง</Field.Label>
-                                                    <Table.Root size="sm" variant={"outline"}>
-                                                        <Table.Header>
-                                                            <Table.Row>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ทิศทาง
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ประเภท
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    วัสดุ
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ชนิดกระจก
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    กันสาด
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    ม่านบังแดด
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader
-                                                                    fontWeight={600}
-                                                                    textAlign={"center"}
-                                                                >
-                                                                    จำนวน
-                                                                </Table.ColumnHeader>
-                                                            </Table.Row>
-                                                        </Table.Header>
-                                                        <Table.Body>
-                                                            {formData.windowValue.map((item, index) => {
-                                                                return (
-                                                                    <Table.Row key={index}>
-                                                                        <Table.Cell textAlign={"center"}>
-                                                                            {
-                                                                                directions.find(
-                                                                                    (d) =>
-                                                                                        d.value === item.directionName
-                                                                                )?.label
-                                                                            }
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                value={item.windowType ?? ""}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = e.target.value;
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.windowValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            windowType: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            windowValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                {windowTypeData.map(
-                                                                                    (windowtype, index) => {
-                                                                                        return (
-                                                                                            <MenuItem
-                                                                                                key={index}
-                                                                                                value={
-                                                                                                    windowtype.WindowType
-                                                                                                }
-                                                                                            >
-                                                                                                {
-                                                                                                    windowTypeLabelMap[
-                                                                                                    windowtype
-                                                                                                        .WindowType
-                                                                                                    ]
-                                                                                                }
-                                                                                            </MenuItem>
-                                                                                        );
-                                                                                    }
-                                                                                )}
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                value={item.material}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = e.target.value;
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.windowValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            material: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            windowValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={"Glass"}>
-                                                                                    กระจก
-                                                                                </MenuItem>
-                                                                                <MenuItem value={"Other"}>
-                                                                                    อื่น ๆ
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                disabled={item.material !== "Glass"}
-                                                                                value={item.glassType}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = e.target.value;
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.windowValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            glassType: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            windowValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={"SingleGlazing"}>
-                                                                                    กระจกใสธรรมดา
-                                                                                </MenuItem>
-                                                                                <MenuItem value={"Tinted"}>
-                                                                                    กระจกสี
-                                                                                </MenuItem>
-                                                                                <MenuItem value={"Low-E"}>
-                                                                                    กระจก Low-E
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                disabled={item.material !== "Glass"}
-                                                                                value={item.haveShade}
-                                                                                onChange={(e) => {
-                                                                                    const newValue =
-                                                                                        e.target.value === "true";
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.windowValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            haveShade: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            windowValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={"true"}>มี</MenuItem>
-                                                                                <MenuItem value={"false"}>
-                                                                                    ไม่มี
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <Select
-                                                                                displayEmpty
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                disabled={item.material !== "Glass"}
-                                                                                value={item.haveCurtain}
-                                                                                onChange={(e) => {
-                                                                                    const newValue =
-                                                                                        e.target.value === "true";
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.windowValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            haveCurtain: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            windowValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <MenuItem value={"true"}>มี</MenuItem>
-                                                                                <MenuItem value={"false"}>
-                                                                                    ไม่มี
-                                                                                </MenuItem>
-                                                                            </Select>
-                                                                        </Table.Cell>
-
-                                                                        <Table.Cell>
-                                                                            <TextField
-                                                                                type="number"
-                                                                                sx={{
-                                                                                    width: "100%",
-                                                                                }}
-                                                                                value={item.quantity}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = Number(
-                                                                                        e.target.value
-                                                                                    );
-                                                                                    setFormData((prev) => {
-                                                                                        const updated = [
-                                                                                            ...prev.windowValue,
-                                                                                        ];
-                                                                                        updated[index] = {
-                                                                                            ...updated[index],
-                                                                                            quantity: newValue,
-                                                                                        };
-                                                                                        return {
-                                                                                            ...prev,
-                                                                                            windowValue: updated,
-                                                                                        };
-                                                                                    });
-                                                                                }}
-                                                                            />
-                                                                        </Table.Cell>
-                                                                    </Table.Row>
-                                                                );
-                                                            })}
-                                                        </Table.Body>
-                                                    </Table.Root>
-                                                </Field.Root>
-                                            </GridItem>
-                                        </Collapse>
-                                    </Grid>
-                                </GridItem>
-
-                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} height={"100%"}>
-                                    <Grid
-                                        // gridTemplateColumns={'repeat(1, 1fr)'}
-                                        gap={5}
+                                    {/* Floor */}
+                                    <Collapse
+                                        in={
+                                            formData.buildingType === "Single" ||
+                                            (formData.buildingType === "Multi" && formData.roomPosition === "Bottom")
+                                        }
+                                        timeout={400}
+                                        unmountOnExit
+                                        sx={{ width: "100%" }}
                                     >
-                                        {/* Light */}
-                                        <GridItem>
-                                            <Field.Root>
-                                                <Field.Label>ความสว่าง (Light)</Field.Label>
-                                                <Field.Label>มี Ballast ไหม</Field.Label>
-                                                <FormControl fullWidth>
-                                                    <Select
-                                                        displayEmpty
-                                                        value={formData.ballastFactor ?? ""}
-                                                        onChange={(e) =>
-                                                            setFormData((prev) => ({
-                                                                ...prev,
-                                                                ballastFactor: Number(e.target.value),
-                                                            }))
-                                                        }
-                                                    >
-                                                        <MenuItem value={1}>
-                                                            ไม่มีบัลลาสต์/ไม่ทราบ (เช่น หลอด LED, หลอดไส้)
-                                                        </MenuItem>
-                                                        <MenuItem value={1.15}>
-                                                            มีบัลลาสต์ (เช่น ฟลูออเรสเซนต์, HID){" "}
-                                                        </MenuItem>
-                                                    </Select>
-                                                </FormControl>
-                                            </Field.Root>
-                                        </GridItem>
-
-                                        {/* People */}
-                                        <GridItem>
-                                            <Field.Root>
-                                                <Field.Label>ผู้อยู่อาศัย (People)</Field.Label>
-                                                <Box display={"flex"} alignItems={"center"} gap={2}>
-                                                    <Text fontSize={16} marginBottom={2}>
-                                                        จำนวนผู้อยู่อาศัยในอาคาร
-                                                    </Text>
-                                                    <TextField
-                                                        type="number"
-                                                        value={formData.people}
-                                                        onChange={(e) =>
-                                                            setFormData((prev) => ({
-                                                                ...prev,
-                                                                people: Number(e.target.value),
-                                                            }))
-                                                        }
-                                                    />
-                                                    <Text fontSize={16} marginBottom={2}>
-                                                        คน
-                                                    </Text>
-                                                </Box>
-                                            </Field.Root>
-                                        </GridItem>
-                                    </Grid>
-                                </GridItem>
-
-                                {/* Equipment */}
-                                <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} height={"100%"}>
-                                    <Grid gap={5}>
-                                        <GridItem>
-                                            <Field.Root>
-                                                <Field.Label>อุปกรณ์ (Equipment)</Field.Label>
-                                                {/* <Field.Label>ระบุข้อมูลหลังคา</Field.Label> */}
-                                                <Table.Root size="sm" variant={"outline"}>
-                                                    <Table.Header>
-                                                        <Table.Row>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                ประเภท
-                                                            </Table.ColumnHeader>
-                                                            <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                จำนวน
-                                                            </Table.ColumnHeader>
-                                                        </Table.Row>
-                                                    </Table.Header>
-                                                    <Table.Body>
-                                                        {
-                                                            formData.equipmentValue.map((item, index) => (
-                                                                <Table.Row key={index}>
-                                                                    <Table.Cell>{item.label}</Table.Cell>
+                                        <GridItem
+                                            border={"1px solid #c5c5c6"}
+                                            borderRadius={10}
+                                            padding={5}
+                                            height={"100%"}
+                                            colSpan={2}
+                                        >
+                                            <Grid gap={5}>
+                                                <GridItem>
+                                                    <Field.Root>
+                                                        <Field.Label>พื้น (Floor)</Field.Label>
+                                                        <Field.Label>ระบุข้อมูลพื้น</Field.Label>
+                                                        <Table.Root size="sm" variant={"outline"}>
+                                                            <Table.Header>
+                                                                <Table.Row>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        มีฉนวนหรือไม่
+                                                                    </Table.ColumnHeader>
+                                                                </Table.Row>
+                                                            </Table.Header>
+                                                            <Table.Body>
+                                                                <Table.Row>
                                                                     <Table.Cell>
-                                                                        <TextField
-                                                                            type="number"
-                                                                            value={item.quantity}
-                                                                            onChange={(e) => {
-                                                                                const newValue = Number(e.target.value);
-                                                                                setFormData((prev) => {
-                                                                                    const updated = [
-                                                                                        ...prev.equipmentValue,
-                                                                                    ];
-                                                                                    updated[index] = {
-                                                                                        ...updated[index],
-                                                                                        quantity: newValue,
-                                                                                        qEquipment:
-                                                                                            updated[index].powerW *
-                                                                                            updated[index].clf *
-                                                                                            newValue,
-                                                                                    };
-                                                                                    return {
-                                                                                        ...prev,
-                                                                                        equipmentValue: updated,
-                                                                                    };
-                                                                                });
-                                                                            }}
+                                                                        <Controller
+                                                                            name="floorValue.uFloor"
+                                                                            control={control}
+                                                                            rules={{ required: "กรุณาเลือกประเภทพื้น" }}
+                                                                            render={({ field, fieldState }) => (
+                                                                                <FormControl fullWidth error={!!fieldState.error}>
+                                                                                    <Select
+                                                                                        {...field}
+                                                                                        displayEmpty
+                                                                                        sx={{ width: "100%" }}
+                                                                                        onChange={(e) => {
+                                                                                            const newValue = Number(e.target.value);
+                                                                                            field.onChange(newValue); // อัปเดต react-hook-form
+                                                                                            setFormData((prev) => ({
+                                                                                                ...prev,
+                                                                                                floorValue: {
+                                                                                                    ...prev.floorValue,
+                                                                                                    uFloor: newValue, // อัปเดต state
+                                                                                                },
+                                                                                            }));
+                                                                                        }}
+                                                                                    >
+                                                                                        <MenuItem value={0.92}>มี</MenuItem>
+                                                                                        <MenuItem value={3.8}>ไม่มี</MenuItem>
+                                                                                    </Select>
+                                                                                    {fieldState.error && (
+                                                                                        <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                            {fieldState.error.message}
+                                                                                        </p>
+                                                                                    )}
+                                                                                </FormControl>
+                                                                            )}
                                                                         />
                                                                     </Table.Cell>
                                                                 </Table.Row>
-                                                            ))
-                                                        }
-                                                    </Table.Body>
-                                                </Table.Root>
-                                            </Field.Root>
+                                                            </Table.Body>
+                                                        </Table.Root>
+                                                    </Field.Root>
+                                                </GridItem>
+                                            </Grid>
                                         </GridItem>
-                                    </Grid>
-                                </GridItem>
-                            </Grid>
-                        </Box>
+                                    </Collapse>
+
+                                    {/* Door Direction */}
+                                    <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
+                                        <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
+                                            <GridItem>
+                                                <Field.Root>
+                                                    <Field.Label>ประตู (Door)</Field.Label>
+                                                    <Field.Label>ระบุทิศทาง (เลือกได้มากกว่า1)</Field.Label>
+                                                    <Controller
+                                                        name="doorValue"
+                                                        control={control}
+                                                        rules={{ required: "กรุณาเลือกทิศประตูอย่างน้อย 1 ด้าน" }}
+                                                        render={({ field }) => (
+                                                            <FormControl fullWidth error={!!errors.doorValue}>
+                                                                <Select
+                                                                    multiple
+                                                                    displayEmpty
+                                                                    input={<OutlinedInput />}
+                                                                    value={formData.doorValue.map((d) => d.directionName)}
+                                                                    onChange={(e) => handleDoorDirectionChange(e, field)}
+                                                                    renderValue={(selected) => (
+                                                                        <Box display="flex" flexWrap="wrap" gap={0.5}>
+                                                                            {selected.map((value) => (
+                                                                                <Chip key={value} label={value} />
+                                                                            ))}
+                                                                        </Box>
+                                                                    )}
+                                                                >
+                                                                    {directions.map((item, index) => (
+                                                                        <MenuItem key={index} value={item.value}>
+                                                                            {item.label}
+                                                                        </MenuItem>
+                                                                    ))}
+                                                                </Select>
+                                                                {errors.doorValue && (
+                                                                    <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                        {errors.doorValue.message}
+                                                                    </p>
+                                                                )}
+                                                            </FormControl>
+                                                        )}
+                                                    />
+                                                </Field.Root>
+                                            </GridItem>
+
+                                            <Collapse
+                                                in={
+                                                    formData.doorValue.length > 0 &&
+                                                    formData.doorValue[0].directionName !== "None"
+                                                }
+                                                timeout={400}
+                                                unmountOnExit
+                                            >
+                                                <GridItem>
+                                                    <Field.Root>
+                                                        <Field.Label>ระบุข้อมูลประตู</Field.Label>
+                                                        <Table.Root size="sm" variant={"outline"}>
+                                                            <Table.Header>
+                                                                <Table.Row>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ทิศทาง
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ประเภท
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        วัสดุ
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ชนิดกระจก
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        กันสาด
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ม่านบังแดด
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        จำนวน
+                                                                    </Table.ColumnHeader>
+                                                                </Table.Row>
+                                                            </Table.Header>
+                                                            <Table.Body>
+                                                                {formData.doorValue.map((item, index) => (
+                                                                    <Table.Row key={index}>
+                                                                        {/* Direction */}
+                                                                        <Table.Cell textAlign="center">
+                                                                            {directions.find((d) => d.value === item.directionName)?.label}
+                                                                        </Table.Cell>
+
+                                                                        {/* Door Type */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`doorValue.${index}.doorType`}
+                                                                                control={control}
+                                                                                rules={{ required: "กรุณาเลือกประเภทประตู" }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                field.onChange(e.target.value);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.doorValue];
+                                                                                                    updated[index] = { ...updated[index], doorType: e.target.value };
+                                                                                                    return { ...prev, doorValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            {doorTypeData.map((doortype, idx) => (
+                                                                                                <MenuItem key={idx} value={doortype.DoorType}>
+                                                                                                    {doorTypeLabelMap[doortype.DoorType]}
+                                                                                                </MenuItem>
+                                                                                            ))}
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* Material */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`doorValue.${index}.material`}
+                                                                                control={control}
+                                                                                rules={{ required: "กรุณาเลือกวัสดุประตู" }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                field.onChange(e.target.value);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.doorValue];
+                                                                                                    updated[index] = { ...updated[index], material: e.target.value };
+                                                                                                    return { ...prev, doorValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="Glass">กระจก</MenuItem>
+                                                                                            <MenuItem value="Other">อื่น ๆ</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* Glass Type */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`doorValue.${index}.glassType`}
+                                                                                control={control}
+                                                                                rules={{
+                                                                                    required: item.material === "Glass" ? "กรุณาเลือกชนิดกระจก" : false,
+                                                                                }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error} disabled={item.material !== "Glass"}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                field.onChange(e.target.value);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.doorValue];
+                                                                                                    updated[index] = { ...updated[index], glassType: e.target.value };
+                                                                                                    return { ...prev, doorValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="SingleGlazing">กระจกใสธรรมดา</MenuItem>
+                                                                                            <MenuItem value="Tinted">กระจกสี</MenuItem>
+                                                                                            <MenuItem value="Low-E">กระจก Low-E</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* Have Shade */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`doorValue.${index}.haveShade`}
+                                                                                control={control}
+                                                                                rules={{
+                                                                                    required: item.material === "Glass" ? "กรุณาเลือกว่ามีกันแดดหรือไม่" : false,
+                                                                                }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error} disabled={item.material !== "Glass"}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                const newValue = e.target.value === "true";
+                                                                                                field.onChange(newValue);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.doorValue];
+                                                                                                    updated[index] = { ...updated[index], haveShade: newValue };
+                                                                                                    return { ...prev, doorValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="true">มี</MenuItem>
+                                                                                            <MenuItem value="false">ไม่มี</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* Have Curtain */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`doorValue.${index}.haveCurtain`}
+                                                                                control={control}
+                                                                                rules={{
+                                                                                    required: item.material === "Glass" ? "กรุณาเลือกว่ามีผ้าม่านหรือไม่" : false,
+                                                                                }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error} disabled={item.material !== "Glass"}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                const newValue = e.target.value === "true";
+                                                                                                field.onChange(newValue);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.doorValue];
+                                                                                                    updated[index] = { ...updated[index], haveCurtain: newValue };
+                                                                                                    return { ...prev, doorValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="true">มี</MenuItem>
+                                                                                            <MenuItem value="false">ไม่มี</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* Quantity */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`doorValue.${index}.quantity`}
+                                                                                control={control}
+                                                                                rules={{ required: "กรุณากรอกจำนวนประตู" }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <TextField
+                                                                                        type="number"
+                                                                                        fullWidth
+                                                                                        {...field}
+                                                                                        onChange={(e) => {
+                                                                                            const newValue = Number(e.target.value);
+                                                                                            field.onChange(newValue);
+                                                                                            setFormData((prev) => {
+                                                                                                const updated = [...prev.doorValue];
+                                                                                                updated[index] = { ...updated[index], quantity: newValue };
+                                                                                                return { ...prev, doorValue: updated };
+                                                                                            });
+                                                                                        }}
+                                                                                        error={!!fieldState.error}
+                                                                                        helperText={fieldState.error?.message}
+                                                                                    />
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+                                                                    </Table.Row>
+                                                                ))}
+                                                            </Table.Body>
+                                                        </Table.Root>
+                                                    </Field.Root>
+                                                </GridItem>
+                                            </Collapse>
+                                        </Grid>
+                                    </GridItem>
+
+                                    {/* Window Direction */}
+                                    <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} colSpan={2}>
+                                        <Grid gridTemplateColumns={"repeat(1, 1fr)"} gap={5}>
+                                            <GridItem>
+                                                <Field.Root>
+                                                    <Field.Label>หน้าต่าง (Window)</Field.Label>
+                                                    <Field.Label>ระบุทิศทาง (เลือกได้มากกว่า1)</Field.Label>
+                                                    <Controller
+                                                        name="windowValue"
+                                                        control={control}
+                                                        rules={{ required: "กรุณาเลือกทิศหน้าต่างอย่างน้อย 1 ด้าน" }}
+                                                        render={({ field }) => (
+                                                            <FormControl fullWidth error={!!errors.windowValue}>
+                                                                <Select
+                                                                    multiple
+                                                                    displayEmpty
+                                                                    input={<OutlinedInput />}
+                                                                    value={formData.windowValue.map((d) => d.directionName)}
+                                                                    onChange={(e) => handleWindowDirectionChange(e, field)}
+                                                                    renderValue={(selected) => (
+                                                                        <Box display="flex" flexWrap="wrap" gap={0.5}>
+                                                                            {selected.map((value) => (
+                                                                                <Chip key={value} label={value} />
+                                                                            ))}
+                                                                        </Box>
+                                                                    )}
+                                                                >
+                                                                    {directions.map((item, index) => (
+                                                                        <MenuItem key={index} value={item.value}>
+                                                                            {item.label}
+                                                                        </MenuItem>
+                                                                    ))}
+                                                                </Select>
+                                                                {errors.windowValue && (
+                                                                    <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                        {errors.windowValue.message}
+                                                                    </p>
+                                                                )}
+                                                            </FormControl>
+                                                        )}
+                                                    />
+                                                </Field.Root>
+                                            </GridItem>
+
+                                            <Collapse
+                                                in={
+                                                    formData.windowValue.length > 0 &&
+                                                    formData.windowValue[0].directionName !== "None"
+                                                }
+                                                timeout={400}
+                                                unmountOnExit
+                                            >
+                                                <GridItem>
+                                                    <Field.Root>
+                                                        <Field.Label>ระบุข้อมูลหน้าต่าง</Field.Label>
+                                                        <Table.Root size="sm" variant={"outline"}>
+                                                            <Table.Header>
+                                                                <Table.Row>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ทิศทาง
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ประเภท
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        วัสดุ
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ชนิดกระจก
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        กันสาด
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        ม่านบังแดด
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader
+                                                                        fontWeight={600}
+                                                                        textAlign={"center"}
+                                                                    >
+                                                                        จำนวน
+                                                                    </Table.ColumnHeader>
+                                                                </Table.Row>
+                                                            </Table.Header>
+                                                            <Table.Body>
+                                                                {formData.windowValue.map((item, index) => (
+                                                                    <Table.Row key={index}>
+                                                                        {/* Direction */}
+                                                                        <Table.Cell textAlign="center">
+                                                                            {directions.find((d) => d.value === item.directionName)?.label}
+                                                                        </Table.Cell>
+
+                                                                        {/* Window Type */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`windowValue.${index}.windowType`}
+                                                                                control={control}
+                                                                                rules={{ required: "กรุณาเลือกประเภทหน้าต่าง" }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                field.onChange(e.target.value);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.windowValue];
+                                                                                                    updated[index] = { ...updated[index], windowType: e.target.value };
+                                                                                                    return { ...prev, windowValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            {windowTypeData.map((windowtype, idx) => (
+                                                                                                <MenuItem key={idx} value={windowtype.WindowType}>
+                                                                                                    {windowTypeLabelMap[windowtype.WindowType]}
+                                                                                                </MenuItem>
+                                                                                            ))}
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* Material */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`windowValue.${index}.material`}
+                                                                                control={control}
+                                                                                rules={{ required: "กรุณาเลือกวัสดุหน้าต่าง" }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                field.onChange(e.target.value);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.windowValue];
+                                                                                                    updated[index] = { ...updated[index], material: e.target.value };
+                                                                                                    return { ...prev, windowValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="Glass">กระจก</MenuItem>
+                                                                                            <MenuItem value="Other">อื่น ๆ</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* Glass Type */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`windowValue.${index}.glassType`}
+                                                                                control={control}
+                                                                                rules={{
+                                                                                    required: item.material === "Glass" ? "กรุณาเลือกชนิดกระจก" : false,
+                                                                                }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error} disabled={item.material !== "Glass"}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                field.onChange(e.target.value);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.windowValue];
+                                                                                                    updated[index] = { ...updated[index], glassType: e.target.value };
+                                                                                                    return { ...prev, windowValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="SingleGlazing">กระจกใสธรรมดา</MenuItem>
+                                                                                            <MenuItem value="Tinted">กระจกสี</MenuItem>
+                                                                                            <MenuItem value="Low-E">กระจก Low-E</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* Have Shade */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`windowValue.${index}.haveShade`}
+                                                                                control={control}
+                                                                                rules={{
+                                                                                    required: item.material === "Glass" ? "กรุณาเลือกว่ามีกันแดดหรือไม่" : false,
+                                                                                }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error} disabled={item.material !== "Glass"}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                const newValue = e.target.value === "true";
+                                                                                                field.onChange(newValue);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.windowValue];
+                                                                                                    updated[index] = { ...updated[index], haveShade: newValue };
+                                                                                                    return { ...prev, windowValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="true">มี</MenuItem>
+                                                                                            <MenuItem value="false">ไม่มี</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* Have Curtain */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`windowValue.${index}.haveCurtain`}
+                                                                                control={control}
+                                                                                rules={{
+                                                                                    required: item.material === "Glass" ? "กรุณาเลือกว่ามีผ้าม่านหรือไม่" : false,
+                                                                                }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error} disabled={item.material !== "Glass"}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                const newValue = e.target.value === "true";
+                                                                                                field.onChange(newValue);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.windowValue];
+                                                                                                    updated[index] = { ...updated[index], haveCurtain: newValue };
+                                                                                                    return { ...prev, windowValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="true">มี</MenuItem>
+                                                                                            <MenuItem value="false">ไม่มี</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+
+                                                                        {/* Quantity */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`windowValue.${index}.quantity`}
+                                                                                control={control}
+                                                                                rules={{ required: "กรุณากรอกจำนวนหน้าต่าง" }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <TextField
+                                                                                        type="number"
+                                                                                        fullWidth
+                                                                                        {...field}
+                                                                                        onChange={(e) => {
+                                                                                            const newValue = Number(e.target.value);
+                                                                                            field.onChange(newValue);
+                                                                                            setFormData((prev) => {
+                                                                                                const updated = [...prev.windowValue];
+                                                                                                updated[index] = { ...updated[index], quantity: newValue };
+                                                                                                return { ...prev, windowValue: updated };
+                                                                                            });
+                                                                                        }}
+                                                                                        error={!!fieldState.error}
+                                                                                        helperText={fieldState.error?.message}
+                                                                                    />
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+                                                                    </Table.Row>
+                                                                ))}
+
+                                                            </Table.Body>
+                                                        </Table.Root>
+                                                    </Field.Root>
+                                                </GridItem>
+                                            </Collapse>
+                                        </Grid>
+                                    </GridItem>
+
+                                    <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} height={"100%"}>
+                                        <Grid
+                                            // gridTemplateColumns={'repeat(1, 1fr)'}
+                                            gap={5}
+                                        >
+                                            {/* Light */}
+                                            <GridItem>
+                                                <Field.Root>
+                                                    <Field.Label>ความสว่าง (Light)</Field.Label>
+                                                    <Field.Label>มี Ballast ไหม</Field.Label>
+                                                    <Controller
+                                                        name="ballastFactor"
+                                                        control={control}
+                                                        rules={{ required: "กรุณาเลือกค่า Ballast Factor" }}
+                                                        render={({ field, fieldState }) => (
+                                                            <FormControl fullWidth error={!!fieldState.error}>
+                                                                <Select
+                                                                    {...field}
+                                                                    displayEmpty
+                                                                    value={field.value ?? ""}
+                                                                    onChange={(e) => {
+                                                                        const newValue = Number(e.target.value);
+                                                                        field.onChange(newValue); // อัปเดต react-hook-form
+                                                                        setFormData((prev) => ({
+                                                                            ...prev,
+                                                                            ballastFactor: newValue, // อัปเดต state เดิม
+                                                                        }));
+                                                                    }}
+                                                                >
+                                                                    <MenuItem value={1}>
+                                                                        ไม่มีบัลลาสต์/ไม่ทราบ (เช่น หลอด LED, หลอดไส้)
+                                                                    </MenuItem>
+                                                                    <MenuItem value={1.15}>
+                                                                        มีบัลลาสต์ (เช่น ฟลูออเรสเซนต์, HID)
+                                                                    </MenuItem>
+                                                                </Select>
+                                                                {fieldState.error && (
+                                                                    <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                        {fieldState.error.message}
+                                                                    </p>
+                                                                )}
+                                                            </FormControl>
+                                                        )}
+                                                    />
+                                                </Field.Root>
+                                            </GridItem>
+
+                                            {/* People */}
+                                            <GridItem>
+                                                <Field.Root>
+                                                    <Field.Label>ผู้อยู่อาศัย (People)</Field.Label>
+                                                    <Box display={"flex"} alignItems={"center"} gap={2}>
+                                                        <Text fontSize={16} marginBottom={2}>
+                                                            จำนวนผู้อยู่อาศัยในอาคาร
+                                                        </Text>
+                                                        <Controller
+                                                            name="people"
+                                                            control={control}
+                                                            rules={{
+                                                                required: "กรุณากรอกจำนวนผู้ใช้งาน",
+                                                                min: { value: 1, message: "จำนวนผู้ใช้งานต้องไม่น้อยกว่า 1" },
+                                                            }}
+                                                            render={({ field, fieldState }) => (
+                                                                <TextField
+                                                                    {...field}
+                                                                    type="number"
+                                                                    value={field.value ?? ""}
+                                                                    onChange={(e) => {
+                                                                        const newValue = Number(e.target.value);
+                                                                        field.onChange(newValue); // อัปเดต react-hook-form
+                                                                        setFormData((prev) => ({
+                                                                            ...prev,
+                                                                            people: newValue, // อัปเดต state เดิม
+                                                                        }));
+                                                                    }}
+                                                                    error={!!fieldState.error}
+                                                                    helperText={fieldState.error?.message}
+                                                                />
+                                                            )}
+                                                        />
+                                                        <Text fontSize={16} marginBottom={2}>
+                                                            คน
+                                                        </Text>
+                                                    </Box>
+                                                </Field.Root>
+                                            </GridItem>
+                                        </Grid>
+                                    </GridItem>
+
+                                    {/* Equipment */}
+                                    <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} height={"100%"}>
+                                        <Grid gap={5}>
+                                            <GridItem>
+                                                <Field.Root>
+                                                    <Field.Label>อุปกรณ์ (Equipment)</Field.Label>
+                                                    <Table.Root size="sm" variant={"outline"}>
+                                                        <Table.Header>
+                                                            <Table.Row>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    ประเภท
+                                                                </Table.ColumnHeader>
+                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                    จำนวน
+                                                                </Table.ColumnHeader>
+                                                            </Table.Row>
+                                                        </Table.Header>
+                                                        <Table.Body>
+                                                            {formData.equipmentValue.map((item, index) => (
+                                                                <Table.Row key={index}>
+                                                                    <Table.Cell>{item.label}</Table.Cell>
+                                                                    <Table.Cell>
+                                                                        <Controller
+                                                                            name={`equipmentValue.${index}.quantity`}
+                                                                            control={control}
+                                                                            rules={{
+                                                                                required: "กรุณากรอกจำนวนอุปกรณ์",
+                                                                                min: { value: 0, message: "จำนวนต้องไม่น้อยกว่า 0" },
+                                                                            }}
+                                                                            render={({ field, fieldState }) => (
+                                                                                <TextField
+                                                                                    {...field}
+                                                                                    type="number"
+                                                                                    value={field.value ?? ""}
+                                                                                    onChange={(e) => {
+                                                                                        const newValue = Number(e.target.value);
+                                                                                        field.onChange(newValue); // อัปเดต react-hook-form
+                                                                                        setFormData((prev) => {
+                                                                                            const updated = [...prev.equipmentValue];
+                                                                                            updated[index] = {
+                                                                                                ...updated[index],
+                                                                                                quantity: newValue,
+                                                                                                qEquipment: updated[index].powerW * updated[index].clf * newValue,
+                                                                                            };
+                                                                                            return { ...prev, equipmentValue: updated };
+                                                                                        });
+                                                                                    }}
+                                                                                    error={!!fieldState.error}
+                                                                                    helperText={fieldState.error?.message}
+                                                                                />
+                                                                            )}
+                                                                        />
+                                                                    </Table.Cell>
+                                                                </Table.Row>
+                                                            ))}
+                                                        </Table.Body>
+                                                    </Table.Root>
+                                                </Field.Root>
+                                            </GridItem>
+                                        </Grid>
+                                    </GridItem>
+                                </Grid>
+                            </Box>
+                            <Collapsible.Root open={selectedOption.buildingType != ""}>
+                                <Flex width={"100%"} justifyContent={"space-between"}>
+                                    <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("one")}>
+                                        Previous
+                                    </Button>
+                                    <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={handleSubmit(
+                                        () => {
+                                            setTabValue("three");
+                                        },
+                                        (formErrors) => {
+                                            console.log("Form errors:", formErrors);
+                                        }
+                                    )}
+                                    >
+                                        Next
+                                    </Button>
+                                </Flex>
+                            </Collapsible.Root>
+                        </form>
                     </Tabs.Content>
                     <Tabs.Content value={"three"}>
                         <AirConditionerSelector
                             filterAirConditionerTypes={filterAirConditionerTypes}
                             onChange={setSelectedOption}
                         />
+                        <Collapsible.Root open={selectedOption.buildingType != ""}>
+                            <Flex width={"100%"} justifyContent={"space-between"}>
+                                <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("two")}>
+                                    Previous
+                                </Button>
+                                <Button type="submit" width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue(selectedOption.selectedAirConditionerType !== "Cassette Type" ? "four" : "five")}>
+                                    Next
+                                </Button>
+                            </Flex>
+                        </Collapsible.Root>
                     </Tabs.Content>
                     <Tabs.Content value={"four"}>
                         <InstallationPositionSelector
@@ -3904,6 +4244,16 @@ function MainPage() {
                             setCalculateVariable={setCalculateVariable}
                             directions={directions}
                         />
+                        <Collapsible.Root open={selectedOption.buildingType != ""}>
+                            <Flex width={"100%"} justifyContent={"space-between"}>
+                                <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("three")}>
+                                    Previous
+                                </Button>
+                                <Button type="submit" width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("five")}>
+                                    Next
+                                </Button>
+                            </Flex>
+                        </Collapsible.Root>
                     </Tabs.Content>
                     <Tabs.Content value={"five"}>
                         <Box>
@@ -3974,13 +4324,18 @@ function MainPage() {
                                                             คำนวณค่าไฟรายปี
                                                         </Table.Cell>
                                                         <Table.Cell className="strong-text">
-                                                            {calculateVariable.electricityCost?.yearly_cost?.toLocaleString(
-                                                                "en-US",
-                                                                {
-                                                                    minimumFractionDigits: 2,
-                                                                    maximumFractionDigits: 2,
-                                                                }
-                                                            ) ?? "0.00"}
+                                                            {
+                                                                selectedOption.businessSize || selectedOption.buildingType === "Home" ?
+                                                                    (
+                                                                        calculateVariable.electricityCost?.yearly_cost?.toLocaleString(
+                                                                            "en-US",
+                                                                            {
+                                                                                minimumFractionDigits: 2,
+                                                                                maximumFractionDigits: 2,
+                                                                            }
+                                                                        )
+                                                                    ) : ("0.00")
+                                                            }
                                                         </Table.Cell>
                                                         <Table.Cell className="strong-text-blue">บาท/ปี</Table.Cell>
                                                     </Table.Row>
@@ -4090,22 +4445,15 @@ function MainPage() {
                                 </GridItem>
                             </Grid>
                         </Box>
+                        <Collapsible.Root open={selectedOption.buildingType != ""}>
+                            <Flex width={"100%"} justifyContent={"space-between"}>
+                                <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue(selectedOption.selectedAirConditionerType !== "Cassette Type" ? "four" : "three")}>
+                                    Previous
+                                </Button>
+                            </Flex>
+                        </Collapsible.Root>
                     </Tabs.Content>
                 </Tabs.Root>
-                <Collapsible.Root open={selectedOption.buildingType != ""}>
-                    <Flex width={"100%"} justifyContent={tabValue === "one" ? "flex-end" : "space-between"}>
-                        {tabValue !== "one" && (
-                            <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={handleClickPrev}>
-                                Previous
-                            </Button>
-                        )}
-                        {tabValue !== "five" && (
-                            <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={handleClickNext}>
-                                Next
-                            </Button>
-                        )}
-                    </Flex>
-                </Collapsible.Root>
             </Container>
         </Box>
     );

@@ -15,7 +15,7 @@ interface SelectedOption {
 }
 
 interface BuildingSelectorProps {
-    onChange?: (option: SelectedOption) => void;
+    onChange?: (option: SelectedOption | ((prev: SelectedOption) => SelectedOption)) => void;
 }
 
 const BuildingSelector: React.FC<BuildingSelectorProps> = ({ onChange }) => {
@@ -27,8 +27,11 @@ const BuildingSelector: React.FC<BuildingSelectorProps> = ({ onChange }) => {
     // เรียก onChange หลังจาก selectedOption อัปเดตแล้ว
     useEffect(() => {
         if (onChange) {
-            onChange(selectedOption);
-        }
+        onChange((prev) => ({
+            ...prev,
+            ...selectedOption,
+        }));
+    }
     }, [selectedOption, onChange]);
 
     const buildingType: Item[] = [
