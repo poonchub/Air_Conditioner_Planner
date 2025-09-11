@@ -613,7 +613,7 @@ function MainPage() {
             }));
             setFormData((prev) => ({ ...prev, equipmentValue }));
         }
-    }, [selectedOption]);
+    }, [selectedOption.buildingType, selectedOption.subRoom]);
 
     // qInfiltration
     useEffect(() => {
@@ -1459,7 +1459,7 @@ function MainPage() {
                 electricityCost: electricityCost,
             }));
         }
-    }, [selectedOption.selectedAirConditionerType, BTUAirData, calculateVariable.qTotalAll]);
+    }, [selectedOption.selectedAirConditionerType, BTUAirData, calculateVariable.qTotalAll, selectedOption.businessSize]);
 
     function combineGlassData(wallValue: WallValue[], doorValue: DoorValue[], windowValue: WindowValue[]) {
         return wallValue.map((wall) => {
@@ -1981,10 +1981,9 @@ function MainPage() {
         if (currentIndex < steps.length - 1) {
             setTabValue(value);
         }
-        if (value === "five" && selectedOption.buildingType === "Home") {
+        if (value === "five") {
             click()
         }
-
     };
 
     const handleClickPrev = () => {
@@ -4016,41 +4015,68 @@ function MainPage() {
                                         แนะนำตำแหน่งติดตั้งเครื่องปรับอากาศ (indoor) :
                                     </Text>
                                     {
-                                        sortedTotalScore.map((wallScore, index) => {
-                                            return (
-                                                <Box key={index}>
-                                                    <Box>
-                                                        <Text marginBottom={1}>ตำแหน่งที่ {index + 1}</Text>
-                                                    </Box>
+                                        selectedOption.selectedAirConditionerType === "Cassette Type" ?
+                                            (
+                                                <Box >
                                                     <Box display={'flex'} gap={4} border={"1px solid #c5c5c6"} borderRadius={10} paddingY={4} paddingX={6}>
-                                                        <Text
-                                                            marginBottom={1}
-                                                            fontWeight={500}
-                                                            bgColor={
-                                                                wallScore.wallScore?.totalScore ?
-                                                                    wallScore.wallScore?.totalScore >= 90 ? "#00E200" :
-                                                                        wallScore.wallScore?.totalScore >= 70 ? "#64D9FF" :
-                                                                            wallScore.wallScore?.totalScore >= 50 ? "#F9D800" : "#FF2A04" : ""
-                                                            }
-                                                            borderRadius={15}
-                                                            minWidth={74}
-                                                            textAlign={'center'}
-                                                            color={'#FFF'}
-                                                        >
-                                                            {
-                                                                wallScore.wallScore?.totalScore ?
-                                                                    wallScore.wallScore?.totalScore >= 90 ? "ดีมาก" :
-                                                                        wallScore.wallScore?.totalScore >= 70 ? "ดี" :
-                                                                            wallScore.wallScore?.totalScore >= 50 ? "พอใช้" : "ไม่แนะนำ" : ""
-                                                            }
-                                                        </Text>
                                                         <Text>
-                                                            ผนังด้าน{directions.find((d) => d.value === wallScore.directionName)?.label}
+                                                            ติดตั้งใกล้ตำแหน่งกลางห้อง
                                                         </Text>
                                                     </Box>
                                                 </Box>
+                                            ) : (
+                                                sortedTotalScore.map((wallScore, index) => {
+                                                    return (
+                                                        <Box key={index}>
+                                                            <Box>
+                                                                <Text marginBottom={1}>ตำแหน่งที่ {index + 1}</Text>
+                                                            </Box>
+                                                            <Box
+                                                                display={'flex'}
+                                                                gap={4}
+                                                                border={"1px solid #c5c5c6"}
+                                                                borderRadius={10}
+                                                                paddingY={4}
+                                                                paddingX={6}
+                                                            >
+                                                                <Text
+                                                                    marginBottom={1}
+                                                                    fontWeight={500}
+                                                                    bgColor={
+                                                                        wallScore.wallScore?.totalScore
+                                                                            ? wallScore.wallScore?.totalScore >= 90
+                                                                                ? "#00E200"
+                                                                                : wallScore.wallScore?.totalScore >= 70
+                                                                                    ? "#64D9FF"
+                                                                                    : wallScore.wallScore?.totalScore >= 50
+                                                                                        ? "#F9D800"
+                                                                                        : "#FF2A04"
+                                                                            : ""
+                                                                    }
+                                                                    borderRadius={15}
+                                                                    minWidth={74}
+                                                                    textAlign={'center'}
+                                                                    color={'#FFF'}
+                                                                >
+                                                                    {wallScore.wallScore?.totalScore
+                                                                        ? wallScore.wallScore?.totalScore >= 90
+                                                                            ? "ดีมาก"
+                                                                            : wallScore.wallScore?.totalScore >= 70
+                                                                                ? "ดี"
+                                                                                : wallScore.wallScore?.totalScore >= 50
+                                                                                    ? "พอใช้"
+                                                                                    : "ไม่แนะนำ"
+                                                                        : ""}
+                                                                </Text>
+                                                                <Text>
+                                                                    ผนังด้าน
+                                                                    {directions.find((d) => d.value === wallScore.directionName)?.label}
+                                                                </Text>
+                                                            </Box>
+                                                        </Box>
+                                                    )
+                                                })
                                             )
-                                        })
                                     }
                                 </GridItem>
 

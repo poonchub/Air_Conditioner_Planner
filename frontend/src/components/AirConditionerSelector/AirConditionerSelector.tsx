@@ -32,7 +32,7 @@ const AirConditionerSelector: React.FC<AirConditionerSelectorProps> = ({
                 selectedAirConditionerType: selectedOption.selectedAirConditionerType,
             }));
         }
-    }, [selectedOption, onChange]);
+    }, [selectedOption]);
 
     return (
         <Box>
