@@ -243,6 +243,8 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                         pipingLayout = 100
                     } else if (wall.wallCondition === "Sunny") {
                         pipingLayout = 70
+                    } else {
+                        pipingLayout = 40
                     }
                 }
 
@@ -278,7 +280,7 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                 let furnitureAndOccupants = 0
                 let airDistribution = 0
                 let doorsAndWindows = 0
-                let pipingLayout = 0
+                let pipingLayout = 40
 
                 const result = prev.furniturePosition.find((p) => p === wall.directionName)
                 if (result) {

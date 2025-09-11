@@ -1450,6 +1450,14 @@ function MainPage() {
                 ...prev,
                 recommendedBTU: Number(result?.BTU),
             }));
+
+            const electricityCost = calculateElectricityCost();
+            console.log("Cost: ", electricityCost);
+
+            setCalculateVariable((prev) => ({
+                ...prev,
+                electricityCost: electricityCost,
+            }));
         }
     }, [selectedOption.selectedAirConditionerType, BTUAirData, calculateVariable.qTotalAll]);
 
@@ -1768,13 +1776,9 @@ function MainPage() {
 
         console.log("Sum BTU:", sum);
 
-        const electricityCost = calculateElectricityCost();
-        console.log("Cost: ", electricityCost);
-
         setCalculateVariable((prev) => ({
             ...prev,
             qTotalAll: sum,
-            electricityCost: electricityCost,
         }));
 
         calculateVariable.wallScoreAll.map((wallScore) => {
@@ -1880,7 +1884,7 @@ function MainPage() {
         let work_days_per_year: number = 0;
         if (
             selectedOption.buildingType === "Home" ||
-            (selectedOption.buildingType === "Public / Education" && selectedOption.subRoom === "Office")
+            (selectedOption.buildingType === "Commercial" && selectedOption.subRoom !== "Office")
         ) {
             work_days_per_year = 365;
         } else {
@@ -1932,7 +1936,7 @@ function MainPage() {
         await handleClickCalculateQTotalAll()
     }
 
-    useEffect(()=>{
+    useEffect(() => {
         if (selectedOption.buildingType !== "Home") {
             click()
         }
@@ -1977,10 +1981,10 @@ function MainPage() {
         if (currentIndex < steps.length - 1) {
             setTabValue(value);
         }
-        if (value === "four" && selectedOption.buildingType === "Home") {
+        if (value === "five" && selectedOption.buildingType === "Home") {
             click()
         }
-        
+
     };
 
     const handleClickPrev = () => {
@@ -2054,8 +2058,8 @@ function MainPage() {
 
     return (
         <Box className="main-page-container">
-            {/* <Button onClick={handleClickCalculateAll}>Calculate</Button>
-            <Button onClick={handleClickCalculateQTotalAll}>Calculate All</Button> */}
+            <Button onClick={handleClickCalculateAll}>Calculate</Button>
+            <Button onClick={handleClickCalculateQTotalAll}>Calculate All</Button>
             <Box
                 width={"100%"}
                 padding={"5rem 2rem"}
@@ -4035,9 +4039,9 @@ function MainPage() {
                                                         >
                                                             {
                                                                 wallScore.wallScore?.totalScore ?
-                                                                    wallScore.wallScore?.totalScore >= 90 ? "ดี" :
-                                                                        wallScore.wallScore?.totalScore >= 70 ? "พอใช้" :
-                                                                            wallScore.wallScore?.totalScore >= 50 ? "ควรปรับ" : "ไม่แนะนำ" : ""
+                                                                    wallScore.wallScore?.totalScore >= 90 ? "ดีมาก" :
+                                                                        wallScore.wallScore?.totalScore >= 70 ? "ดี" :
+                                                                            wallScore.wallScore?.totalScore >= 50 ? "พอใช้" : "ไม่แนะนำ" : ""
                                                             }
                                                         </Text>
                                                         <Text>
