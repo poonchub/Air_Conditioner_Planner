@@ -8,15 +8,15 @@ Wall Type,20000
 Wall Type,21000
 Wall Type,22000
 Wall Type,24000
-Ceiling Suspended,9000
-Ceiling Suspended,12000
-Ceiling Suspended,15000
-Ceiling Suspended,18000
-Ceiling Suspended,21000
-Ceiling Suspended,24000
-Ceiling Suspended,30000
-Ceiling Suspended,36000
-Ceiling Suspended,42000
+Ceiling Suspended Type,9000
+Ceiling Suspended Type,12000
+Ceiling Suspended Type,15000
+Ceiling Suspended Type,18000
+Ceiling Suspended Type,21000
+Ceiling Suspended Type,24000
+Ceiling Suspended Type,30000
+Ceiling Suspended Type,36000
+Ceiling Suspended Type,42000
 Cassette Type,"9,600"
 Cassette Type,"12,000"
 Cassette Type,"18,000"
