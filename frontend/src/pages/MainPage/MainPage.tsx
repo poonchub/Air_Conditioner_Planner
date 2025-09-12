@@ -1,7 +1,6 @@
 import {
     Box,
     Button,
-    Collapsible,
     Container,
     Field,
     Flex,
@@ -136,6 +135,55 @@ export type WallValue = {
     wallScore?: WallScore
 };
 
+type DoorValueError = {
+    directionName: string;
+    doorType: string;
+    material: string;
+    haveShade: string;
+    haveCurtain: string;
+    quantity: string;
+    cfm: number;
+    glassType: string;
+    doorArea: number;
+    qDoorGlassByMonth: any[];
+    qSolarDoorGlassByMonth: any[];
+};
+
+type WindowValueError = {
+    directionName: string;
+    windowType: string;
+    material: string;
+    haveShade: string;
+    haveCurtain: string;
+    quantity: string;
+    cfm: number;
+    glassType: string;
+    windowArea: number;
+    qWindowGlassByMonth: any[];
+    qSolarWindowGlassByMonth: any[];
+};
+
+export type WallValueError = {
+    directionName: string;
+    position: string;
+    material: string;
+    kWallColor: string;
+    wallArea: number;
+    glassAreaWindow: number;
+    glassAreaDoor: number;
+    haveShade: string;
+    haveCurtain: string;
+    glassType: string;
+    qWallByMonth: any[];
+    qWallGlassByMonth: any[];
+    qSolarWallGlassByMonth: any[];
+    qSolarGlassByMonth?: any[];
+    qGlassByMonth?: any[];
+    wallCondition: string,
+    hasOpenSpace: boolean,
+    wallScore?: WallScore
+};
+
 type NoAirDirectionValue = {
     directionName: string;
     position: string;
@@ -149,6 +197,11 @@ type NoAirDirectionValue = {
 type FloorValue = {
     uFloor: number;
     qFloor: number;
+};
+
+type FloorValueError = {
+    uFloor: string;
+    qFloor: string;
 };
 
 type RoofValue = {
@@ -192,6 +245,31 @@ export type FormDataProps = {
     furniturePosition: string[];
 };
 
+export type FormDataErrorProps = {
+    province: string;
+    people: number;
+    width: number;
+    depth: number;
+    height: number;
+    startTime: string;
+    endTime: string;
+    ceiling: string;
+    ceilingHeight: string;
+    buildingType: string;
+    roomPosition: string;
+    roofType: string;
+    kRoofColor: number;
+    ballastFactor: number;
+    noAirDirectionValue: NoAirDirectionValue[];
+    equipmentValue: EquipmentValue[];
+    doorValue: DoorValueError[];
+    windowValue: WindowValueError[];
+    wallValue: WallValueError[];
+    floorValue: FloorValueError;
+    roofValue: RoofValue;
+    furniturePosition: string[];
+};
+
 export type CalculateVariableProps = {
     qLight: number;
     qPeople: number;
@@ -221,7 +299,7 @@ type HourData = {
 };
 
 function MainPage() {
-    const { control, handleSubmit, formState: { errors } } = useForm<FormDataProps>({
+    const { control, handleSubmit, formState: { errors } } = useForm<FormDataErrorProps>({
         defaultValues: {
             province: "",
             people: 1,
@@ -242,7 +320,7 @@ function MainPage() {
             doorValue: [],
             windowValue: [],
             wallValue: [],
-            floorValue: { uFloor: 0, qFloor: 0 },
+            floorValue: { uFloor: "", qFloor: "" },
             roofValue: { qRoofByMonth: [] },
             furniturePosition: [],
         },
@@ -2119,14 +2197,14 @@ function MainPage() {
         (a, b) => (b?.wallScore?.totalScore ?? 0) - (a?.wallScore?.totalScore ?? 0)
     );
 
-    const onSubmit = (data: FormDataProps) => {
+    const onSubmit = (data: FormDataErrorProps) => {
         console.log("Form Data:", data);
     };
 
     return (
         <Box className="main-page-container">
-            <Button onClick={handleClickCalculateAll}>Calculate</Button>
-            <Button onClick={handleClickCalculateQTotalAll}>Calculate All</Button>
+            {/* <Button onClick={handleClickCalculateAll}>Calculate</Button>
+            <Button onClick={handleClickCalculateQTotalAll}>Calculate All</Button> */}
             <Box
                 width={"100%"}
                 padding={"5rem 2rem"}
@@ -2171,13 +2249,13 @@ function MainPage() {
                     </Tabs.List>
                     <Tabs.Content value={"one"}>
                         <BuildingSelector onChange={setSelectedOption} />
-                        <Collapsible.Root open={selectedOption.buildingType != ""}>
+                        <Collapse in={!(selectedOption.buildingType === null || selectedOption.subRoom === null)} timeout={400} unmountOnExit>
                             <Flex width={"100%"} justifyContent={"end"}>
                                 <Button type="submit" width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("two")}>
                                     Next
                                 </Button>
                             </Flex>
-                        </Collapsible.Root>
+                        </Collapse>
                     </Tabs.Content>
                     <Tabs.Content value={"two"}>
                         <form onSubmit={handleSubmit(onSubmit)}>
@@ -2811,7 +2889,7 @@ function MainPage() {
                                                                                             displayEmpty
                                                                                             onChange={(e) => {
                                                                                                 const newValue = e.target.value === "true";
-                                                                                                field.onChange(newValue);
+                                                                                                field.onChange(e.target.value);
                                                                                                 setFormData((prev) => {
                                                                                                     const updated = [...prev.wallValue];
                                                                                                     updated[index] = { ...updated[index], haveShade: newValue };
@@ -2847,7 +2925,7 @@ function MainPage() {
                                                                                             displayEmpty
                                                                                             onChange={(e) => {
                                                                                                 const newValue = e.target.value === "true";
-                                                                                                field.onChange(newValue);
+                                                                                                field.onChange(e.target.value);
                                                                                                 setFormData((prev) => {
                                                                                                     const updated = [...prev.wallValue];
                                                                                                     updated[index] = { ...updated[index], haveCurtain: newValue };
@@ -2881,7 +2959,7 @@ function MainPage() {
                                                                                             displayEmpty
                                                                                             onChange={(e) => {
                                                                                                 const newValue = Number(e.target.value);
-                                                                                                field.onChange(newValue);
+                                                                                                field.onChange(e.target.value);
                                                                                                 setFormData((prev) => {
                                                                                                     const updated = [...prev.wallValue];
                                                                                                     updated[index] = { ...updated[index], kWallColor: newValue };
@@ -2919,7 +2997,7 @@ function MainPage() {
                                                 <Field.Root>
                                                     <Field.Label>สภาพแวดล้อมภายในอาคาร</Field.Label>
                                                     <Field.Label>
-                                                        ระบุอีกฝั่งของผนังที่ไม่ได้ติดตั้งเครื่องวปรับอากาศ
+                                                        ระบุอีกฝั่งของผนังที่ไม่ได้ติดตั้งเครื่องปรับอากาศ
                                                         (เฉพาะผนังที่ติดกับห้องอื่น และเลือกได้มากกว่า1)
                                                     </Field.Label>
                                                     <Controller
@@ -3632,7 +3710,7 @@ function MainPage() {
                                                                                             displayEmpty
                                                                                             onChange={(e) => {
                                                                                                 const newValue = e.target.value === "true";
-                                                                                                field.onChange(newValue);
+                                                                                                field.onChange(e.target.value);
                                                                                                 setFormData((prev) => {
                                                                                                     const updated = [...prev.doorValue];
                                                                                                     updated[index] = { ...updated[index], haveShade: newValue };
@@ -3668,7 +3746,7 @@ function MainPage() {
                                                                                             displayEmpty
                                                                                             onChange={(e) => {
                                                                                                 const newValue = e.target.value === "true";
-                                                                                                field.onChange(newValue);
+                                                                                                field.onChange(e.target.value);
                                                                                                 setFormData((prev) => {
                                                                                                     const updated = [...prev.doorValue];
                                                                                                     updated[index] = { ...updated[index], haveCurtain: newValue };
@@ -3955,7 +4033,7 @@ function MainPage() {
                                                                                             displayEmpty
                                                                                             onChange={(e) => {
                                                                                                 const newValue = e.target.value === "true";
-                                                                                                field.onChange(newValue);
+                                                                                                field.onChange(e.target.value);
                                                                                                 setFormData((prev) => {
                                                                                                     const updated = [...prev.windowValue];
                                                                                                     updated[index] = { ...updated[index], haveShade: newValue };
@@ -3991,7 +4069,7 @@ function MainPage() {
                                                                                             displayEmpty
                                                                                             onChange={(e) => {
                                                                                                 const newValue = e.target.value === "true";
-                                                                                                field.onChange(newValue);
+                                                                                                field.onChange(e.target.value);
                                                                                                 setFormData((prev) => {
                                                                                                     const updated = [...prev.windowValue];
                                                                                                     updated[index] = { ...updated[index], haveCurtain: newValue };
@@ -4201,7 +4279,7 @@ function MainPage() {
                                     </GridItem>
                                 </Grid>
                             </Box>
-                            <Collapsible.Root open={selectedOption.buildingType != ""}>
+                            <Collapse in={!(selectedOption.buildingType === null || selectedOption.subRoom === null)} timeout={400} unmountOnExit>
                                 <Flex width={"100%"} justifyContent={"space-between"}>
                                     <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("one")}>
                                         Previous
@@ -4218,7 +4296,7 @@ function MainPage() {
                                         Next
                                     </Button>
                                 </Flex>
-                            </Collapsible.Root>
+                            </Collapse>
                         </form>
                     </Tabs.Content>
                     <Tabs.Content value={"three"}>
@@ -4226,16 +4304,16 @@ function MainPage() {
                             filterAirConditionerTypes={filterAirConditionerTypes}
                             onChange={setSelectedOption}
                         />
-                        <Collapsible.Root open={selectedOption.buildingType != ""}>
-                            <Flex width={"100%"} justifyContent={"space-between"}>
-                                <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("two")}>
-                                    Previous
-                                </Button>
-                                <Button type="submit" width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue(selectedOption.selectedAirConditionerType !== "Cassette Type" ? "four" : "five")}>
+                        <Flex width={"100%"} justifyContent={"space-between"}>
+                            <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("two")}>
+                                Previous
+                            </Button>
+                            <Collapse in={!(selectedOption.selectedAirConditionerType === null)} timeout={400} unmountOnExit>
+                                <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue(selectedOption.selectedAirConditionerType !== "Cassette Type" ? "four" : "five")}>
                                     Next
                                 </Button>
-                            </Flex>
-                        </Collapsible.Root>
+                            </Collapse>
+                        </Flex>
                     </Tabs.Content>
                     <Tabs.Content value={"four"}>
                         <InstallationPositionSelector
@@ -4244,16 +4322,16 @@ function MainPage() {
                             setCalculateVariable={setCalculateVariable}
                             directions={directions}
                         />
-                        <Collapsible.Root open={selectedOption.buildingType != ""}>
+                        <Collapse in={!(selectedOption.buildingType === null || selectedOption.subRoom === null)} timeout={400} unmountOnExit>
                             <Flex width={"100%"} justifyContent={"space-between"}>
                                 <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("three")}>
                                     Previous
                                 </Button>
-                                <Button type="submit" width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("five")}>
+                                <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("five")}>
                                     Next
                                 </Button>
                             </Flex>
-                        </Collapsible.Root>
+                        </Collapse>
                     </Tabs.Content>
                     <Tabs.Content value={"five"}>
                         <Box>
@@ -4445,13 +4523,13 @@ function MainPage() {
                                 </GridItem>
                             </Grid>
                         </Box>
-                        <Collapsible.Root open={selectedOption.buildingType != ""}>
+                        <Collapse in={!(selectedOption.buildingType === null || selectedOption.subRoom === null)} timeout={400} unmountOnExit>
                             <Flex width={"100%"} justifyContent={"space-between"}>
                                 <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue(selectedOption.selectedAirConditionerType !== "Cassette Type" ? "four" : "three")}>
                                     Previous
                                 </Button>
                             </Flex>
-                        </Collapsible.Root>
+                        </Collapse>
                     </Tabs.Content>
                 </Tabs.Root>
             </Container>
