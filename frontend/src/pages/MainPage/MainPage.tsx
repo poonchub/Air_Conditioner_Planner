@@ -180,7 +180,7 @@ export type WallValueError = {
     qSolarGlassByMonth?: any[];
     qGlassByMonth?: any[];
     wallCondition: string,
-    hasOpenSpace: boolean,
+    hasOpenSpace: string,
     wallScore?: WallScore
 };
 
@@ -288,6 +288,7 @@ export type CalculateVariableProps = {
     totalQIn: number;
     airConditionerType: string;
     recommendedBTU: number;
+    recommendedUnits: number;
     electricityCost: any;
     wallScoreAll: WallValue[]
 };
@@ -375,6 +376,7 @@ function MainPage() {
         cltdW: 0,
         qTotalAll: 0,
         recommendedBTU: 0,
+        recommendedUnits: 0,
         electricityCost: 0,
         wallScoreAll: []
     });
@@ -2049,7 +2051,8 @@ function MainPage() {
         const result = getClosestBTUAirData(BTUAirData, selectedOption.selectedAirConditionerType || "", targetBTU);
         setCalculateVariable((prev) => ({
             ...prev,
-            recommendedBTU: Number(result?.BTU),
+            recommendedBTU: Number(result?.data.BTU),
+            recommendedUnits: Number(result?.recommendedUnits)
         }));
 
         console.log("targetBTU: ", targetBTU)
@@ -2489,7 +2492,7 @@ function MainPage() {
 
                                             <GridItem colSpan={1}>
                                                 <Grid gridTemplateColumns={"repeat(2, 1fr)"} gap={5}>
-                                                    <GridItem colSpan={1}>
+                                                    <GridItem colSpan={2}>
                                                         <Field.Root>
                                                             <Field.Label>ระยะฝ้าถึงหลังคา/คาน</Field.Label>
                                                             <Controller
@@ -2526,44 +2529,6 @@ function MainPage() {
                                                             />
                                                         </Field.Root>
                                                     </GridItem>
-                                                    {/* <GridItem colSpan={1}>
-                                                        <Field.Root>
-                                                            <Field.Label>ความสูงเพดาน (จากพื้นถึงฝ้าเพดาน)</Field.Label>
-                                                            <Controller
-                                                                name="ceilingHeight"
-                                                                control={control}
-                                                                rules={{ required: "กรุณาเลือกความสูงฝ้า" }}
-                                                                render={({ field }) => (
-                                                                    <FormControl fullWidth error={!!errors.ceilingHeight}>
-                                                                        <Select
-                                                                            {...field}
-                                                                            displayEmpty
-                                                                            onChange={(e) => {
-                                                                                field.onChange(e); // อัปเดต react-hook-form
-                                                                                setFormData((prev) => ({
-                                                                                    ...prev,
-                                                                                    ceilingHeight: e.target.value, // อัปเดต state เก่าด้วย
-                                                                                }));
-                                                                            }}
-                                                                        >
-                                                                            <MenuItem value="">
-                                                                                <em>เลือกความสูงฝ้า</em>
-                                                                            </MenuItem>
-                                                                            <MenuItem value="Low">ต่ำ (2-2.5)</MenuItem>
-                                                                            <MenuItem value="Middle">กลาง (2.5-3)</MenuItem>
-                                                                            <MenuItem value="High">สูง (&gt;3)</MenuItem>
-                                                                            <MenuItem value="OverHigh">สูงมาก (&gt;4)</MenuItem>
-                                                                        </Select>
-                                                                        {errors.ceilingHeight && (
-                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
-                                                                                {errors.ceilingHeight.message}
-                                                                            </p>
-                                                                        )}
-                                                                    </FormControl>
-                                                                )}
-                                                            />
-                                                        </Field.Root>
-                                                    </GridItem> */}
                                                 </Grid>
                                             </GridItem>
 
@@ -2590,7 +2555,7 @@ function MainPage() {
                                                                     }}
                                                                 >
                                                                     <MenuItem value="">
-                                                                        <em>เลือกประเภทอาคาร</em>
+                                                                        <em>กรุณาเลือกลักษณะอาคาร</em>
                                                                     </MenuItem>
                                                                     <MenuItem value="Single">อาคารชั้นเดียว</MenuItem>
                                                                     <MenuItem value="Multi">อาคารหลายชั้น</MenuItem>
@@ -2613,7 +2578,7 @@ function MainPage() {
                                                         <Controller
                                                             name="roomPosition"
                                                             control={control}
-                                                            rules={{ required: "กรุณาเลือกตำแหน่งห้อง" }}
+                                                            rules={{ required: "กรุณาเลือกตำแหน่งห้องภายในอาคาร" }}
                                                             render={({ field }) => (
                                                                 <FormControl fullWidth error={!!errors.roomPosition}>
                                                                     <Select
@@ -2636,7 +2601,7 @@ function MainPage() {
                                                                         }}
                                                                     >
                                                                         <MenuItem value="">
-                                                                            <em>เลือกตำแหน่งห้อง</em>
+                                                                            <em>เลือกตำแหน่งห้องภายในอาคาร</em>
                                                                         </MenuItem>
                                                                         <MenuItem value="Top">ชั้นบนสุด</MenuItem>
                                                                         <MenuItem value="Middle">ระหว่างชั้น</MenuItem>
@@ -2663,7 +2628,7 @@ function MainPage() {
                                                 <Field.Root>
                                                     <Field.Label>ผนัง (wall)</Field.Label>
                                                     <Field.Label>
-                                                        ระบุทิศผนังภายนอกหรือผนังด้านที่ไม่อยู่ในอาคาร (เลือกได้มากกว่า1)
+                                                        ระบุทิศผนังภายนอกหรือผนังด้านที่ติดกับสิ่งแวดล้อมภายนอก (เลือกได้มากกว่า1)
                                                     </Field.Label>
                                                     <Controller
                                                         name="wallValue"
@@ -4339,7 +4304,7 @@ function MainPage() {
                                             <Table.Root size="sm" border={0} fontSize={16}>
                                                 <Table.Body>
                                                     <Table.Row border={0}>
-                                                        <Table.Cell className="strong-text-blue">
+                                                        <Table.Cell className="strong-text-blue" >
                                                             ผลการคำนวณได้เท่ากับ
                                                         </Table.Cell>
                                                         <Table.Cell className="strong-text">
@@ -4365,6 +4330,16 @@ function MainPage() {
                                                             })}
                                                         </Table.Cell>
                                                         <Table.Cell className="strong-text-blue">BTU</Table.Cell>
+                                                    </Table.Row>
+
+                                                    <Table.Row>
+                                                        <Table.Cell className="strong-text-blue">
+                                                            จำนวนเครื่องที่แนะนำ
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text">
+                                                            {calculateVariable.recommendedUnits}
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text-blue">เครื่อง</Table.Cell>
                                                     </Table.Row>
 
                                                     {selectedOption.buildingType !== "Home" && (

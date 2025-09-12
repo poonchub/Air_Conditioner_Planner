@@ -25,6 +25,7 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
     setCalculateVariable,
     directions,
 }) => {
+    // @ts-ignore
     const { control, handleSubmit, formState: { errors } } = useForm<FormDataErrorProps>({
         defaultValues: {
             wallValue: [],
@@ -406,9 +407,13 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                                         <Controller
                                                             name={`wallValue.${index}.hasOpenSpace`}
                                                             control={control}
-                                                            rules={{ required: "กรุณาเลือกว่ามีพื้นที่เปิดหรือไม่" }}
+                                                            rules={{ required: "กรุณาเลือกว่ามีพื้นว่างให้ติดตั้งเครื่องปรับอากาศหรือไม่" }}
+                                                            // @ts-ignore
                                                             render={({ field, fieldState }) => (
-                                                                <FormControl fullWidth error={!!fieldState.error}>
+                                                                <FormControl
+                                                                    fullWidth
+                                                                // error={!!fieldState.error}
+                                                                >
                                                                     <Select
                                                                         {...field}
                                                                         displayEmpty
@@ -423,14 +428,14 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                                                         }}
                                                                     >
                                                                         <MenuItem value="">
-                                                                            <em>เลือกว่ามีพื้นที่เปิดหรือไม่</em>
+                                                                            <em>เลือกว่ามีพื้นว่างให้ติดตั้งเครื่องปรับอากาศหรือไม่</em>
                                                                         </MenuItem>
                                                                         <MenuItem value="true">มี</MenuItem>
                                                                         <MenuItem value="false">ไม่มี</MenuItem>
                                                                     </Select>
-                                                                    {fieldState.error && (
+                                                                    {/* {fieldState.error && (
                                                                         <p style={{ color: "red", fontSize: "0.8rem" }}>{fieldState.error.message}</p>
-                                                                    )}
+                                                                    )} */}
                                                                 </FormControl>
                                                             )}
                                                         />
@@ -444,8 +449,13 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                                             rules={{
                                                                 required: item.hasOpenSpace ? "กรุณาเลือกสภาพผนัง" : false,
                                                             }}
+                                                            // @ts-ignore
                                                             render={({ field, fieldState }) => (
-                                                                <FormControl fullWidth error={!!fieldState.error} disabled={!item.hasOpenSpace}>
+                                                                <FormControl
+                                                                    fullWidth
+                                                                    // error={!!fieldState.error} 
+                                                                    disabled={!item.hasOpenSpace}
+                                                                >
                                                                     <Select
                                                                         {...field}
                                                                         displayEmpty
@@ -464,9 +474,9 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                                                         <MenuItem value="Shaded">มีร่มเงา</MenuItem>
                                                                         <MenuItem value="Sunny">มีแดดส่อง</MenuItem>
                                                                     </Select>
-                                                                    {fieldState.error && (
+                                                                    {/* {fieldState.error && (
                                                                         <p style={{ color: "red", fontSize: "0.8rem" }}>{fieldState.error.message}</p>
-                                                                    )}
+                                                                    )} */}
                                                                 </FormControl>
                                                             )}
                                                         />
@@ -496,7 +506,10 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                         control={control}
                                         rules={{ required: "กรุณาเลือกทิศผนังอย่างน้อย 1 ด้าน" }}
                                         render={({ field }) => (
-                                            <FormControl fullWidth error={!!errors.wallValue}>
+                                            <FormControl
+                                                fullWidth
+                                            // error={!!errors.wallValue}
+                                            >
                                                 <Select
                                                     multiple
                                                     displayEmpty
@@ -517,11 +530,11 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                                         </MenuItem>
                                                     ))}
                                                 </Select>
-                                                {errors.wallValue && (
+                                                {/* {errors.wallValue && (
                                                     <p style={{ color: "red", fontSize: "0.8rem" }}>
                                                         {errors.wallValue.message}
                                                     </p>
-                                                )}
+                                                )} */}
                                             </FormControl>
                                         )}
                                     />
@@ -569,8 +582,12 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                                                 name={`wallValue.${index}.position`}
                                                                 control={control}
                                                                 rules={{ required: "กรุณาเลือกตำแหน่งที่อ้างจากขนาดห้อง" }}
+                                                                // @ts-ignore
                                                                 render={({ field, fieldState }) => (
-                                                                    <FormControl fullWidth error={!!fieldState.error}>
+                                                                    <FormControl
+                                                                        fullWidth
+                                                                    // error={!!fieldState.error}
+                                                                    >
                                                                         <Select
                                                                             {...field}
                                                                             displayEmpty
@@ -595,12 +612,11 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                                                             <MenuItem value="Width">ด้านกว้าง</MenuItem>
                                                                             <MenuItem value="Depth">ด้านยาว</MenuItem>
                                                                         </Select>
-
-                                                                        {fieldState.error && (
+                                                                        {/* {fieldState.error && (
                                                                             <p style={{ color: "red", fontSize: "0.8rem" }}>
                                                                                 {fieldState.error.message}
                                                                             </p>
-                                                                        )}
+                                                                        )} */}
                                                                     </FormControl>
                                                                 )}
                                                             />
@@ -622,8 +638,12 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                 name="furniturePosition"
                                 control={control}
                                 rules={{ required: "กรุณาเลือกตำแหน่งอย่างน้อย 1 ตำแหน่ง" }}
+                                // @ts-ignore
                                 render={({ field, fieldState }) => (
-                                    <FormControl fullWidth error={!!fieldState.error}>
+                                    <FormControl
+                                        fullWidth
+                                    // error={!!fieldState.error}
+                                    >
                                         <Select
                                             {...field}
                                             multiple
@@ -657,11 +677,11 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                             ))}
                                         </Select>
 
-                                        {fieldState.error && (
+                                        {/* {fieldState.error && (
                                             <p style={{ color: "red", fontSize: "0.8rem" }}>
                                                 {fieldState.error.message}
                                             </p>
-                                        )}
+                                        )} */}
                                     </FormControl>
                                 )}
                             />
@@ -674,14 +694,18 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                 <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("three")}>
                     Previous
                 </Button>
-                <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={handleSubmit(
-                    () => {
-                        setTabValue("five");
-                    },
-                    (formErrors) => {
-                        console.log("Form errors:", formErrors);
-                    }
-                )}>
+                <Button width={100} backgroundColor={"#003475"} fontSize={20}
+                    // onClick={
+                    //     handleSubmit(() => {
+                    //         setTabValue("five");
+                    //     },
+                    //         (formErrors) => {
+                    //             console.log("Form errors:", formErrors);
+                    //         }
+                    //     )
+                    // }
+                    onClick={() => setTabValue("five")}
+                >
                     Next
                 </Button>
             </Flex>
