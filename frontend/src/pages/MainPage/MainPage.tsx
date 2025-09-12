@@ -4298,7 +4298,7 @@ function MainPage() {
                             <Heading size={"2xl"} color={"#003475"} marginBottom={4}>
                                 แสดงผลข้อมูล
                             </Heading>
-                            <Grid gridTemplateColumns={"repeat(3, 1fr)"} gap={10} padding={"1.4rem 2rem "}>
+                            <Grid gridTemplateColumns={"repeat(2, 1fr)"} gap={10} padding={"1.4rem 2rem "}>
                                 <GridItem colSpan={1} rowSpan={2}>
                                     <Grid>
                                         <GridItem>
@@ -4530,7 +4530,7 @@ function MainPage() {
                                         </GridItem>
                                     </Grid>
                                 </GridItem>
-                                <GridItem colSpan={2} display="flex" gap={2} flexDirection={"column"}>
+                                <GridItem colSpan={1} display="flex" gap={2} flexDirection={"column"}>
                                     <Text className="strong-text-blue">
                                         แนะนำตำแหน่งติดตั้งเครื่องปรับอากาศ (indoor) :
                                     </Text>
