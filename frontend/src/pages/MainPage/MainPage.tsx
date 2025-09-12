@@ -4217,6 +4217,7 @@ function MainPage() {
                                                                                 <TextField
                                                                                     {...field}
                                                                                     type="number"
+                                                                                    fullWidth
                                                                                     value={field.value ?? ""}
                                                                                     onChange={(e) => {
                                                                                         const newValue = Number(e.target.value);
