@@ -229,7 +229,7 @@ export type FormDataProps = {
     startTime: string;
     endTime: string;
     ceiling: string;
-    ceilingHeight: string;
+    // ceilingHeight: string;
     buildingType: string;
     roomPosition: string;
     roofType: string;
@@ -254,7 +254,7 @@ export type FormDataErrorProps = {
     startTime: string;
     endTime: string;
     ceiling: string;
-    ceilingHeight: string;
+    // ceilingHeight: string;
     buildingType: string;
     roomPosition: string;
     roofType: string;
@@ -306,10 +306,10 @@ function MainPage() {
             width: 3,
             depth: 3,
             height: 3,
-            startTime: "6",
-            endTime: "17",
+            startTime: "",
+            endTime: "",
             ceiling: "",
-            ceilingHeight: "",
+            // ceilingHeight: "",
             buildingType: "",
             roomPosition: "",
             roofType: "",
@@ -367,10 +367,10 @@ function MainPage() {
         width: 3,
         depth: 3,
         height: 3,
-        startTime: "6",
-        endTime: "17",
+        startTime: "",
+        endTime: "",
         ceiling: "HaveCeilinglessthan",
-        ceilingHeight: "Low",
+        // ceilingHeight: "Low",
         buildingType: "Single",
         roomPosition: "",
         roofType: "Concrete",
@@ -2031,8 +2031,8 @@ function MainPage() {
             console.log("use calculate type 1")
             // กิจการขนาดกลาง: ค่าไฟพื้นฐาน + Demand Charge
             base_cost = E_kWh_month * 3.1097;
-            const demand_charge = P_kW * 221.5; // บาทต่อกิโลวัตต์
-            base_cost += demand_charge;
+            // const demand_charge = P_kW * 221.5; // บาทต่อกิโลวัตต์
+            // base_cost += demand_charge;
         }
 
         // Ft 20%
@@ -2050,6 +2050,9 @@ function MainPage() {
             E_kWh_month,
             monthly_cost,
             yearly_cost,
+            base_cost,
+            vat,
+            Ft_total
         };
     };
 
@@ -2171,7 +2174,18 @@ function MainPage() {
     });
 
     const filterAirConditionerTypes = airConditionerTypes.filter((ac) => {
-        const ceilingHeight = formData.ceilingHeight; // "Low", "Middle", "High", "OverHigh"
+        let ceilingHeight = ""; // "Low", "Middle", "High", "OverHigh"
+
+        if (formData.height >= 4) {
+            ceilingHeight = "OverHigh"
+        } else if (formData.height > 3) {
+            ceilingHeight = "High"
+        } else if (formData.height > 2.5) {
+            ceilingHeight = "Middle"
+        } else {
+            ceilingHeight = "Low"
+        }
+
         const ceilingSlot = formData.ceiling; // "HaveCeilinggreaterthan", "HaveCeilinglessthan", "NoCeiling"
 
         switch (ac.title) {
@@ -2330,7 +2344,7 @@ function MainPage() {
                                                                         name="width"
                                                                         control={control}
                                                                         rules={{
-                                                                            required: "กรุณากรอกความกว้าง",
+                                                                            required: "กรุณากรอกความกว้างของห้อง",
                                                                             min: { value: 0, message: "ต้องมากกว่า 0" },
                                                                         }}
                                                                         render={({ field, fieldState }) => (
@@ -2356,7 +2370,7 @@ function MainPage() {
                                                                         name="depth"
                                                                         control={control}
                                                                         rules={{
-                                                                            required: "กรุณากรอกความลึก",
+                                                                            required: "กรุณากรอกความยาวของห้อง",
                                                                             min: { value: 0, message: "ต้องมากกว่า 0" },
                                                                             validate: (value) => {
                                                                                 if (value < formData.width) {
@@ -2388,7 +2402,7 @@ function MainPage() {
                                                                         name="height"
                                                                         control={control}
                                                                         rules={{
-                                                                            required: "กรุณากรอกความสูง",
+                                                                            required: "กรุณากรอกความสูงของห้อง",
                                                                             min: { value: 0, message: "ต้องมากกว่า 0" },
                                                                         }}
                                                                         render={({ field, fieldState }) => (
@@ -2500,11 +2514,11 @@ function MainPage() {
                                                 <Grid gridTemplateColumns={"repeat(2, 1fr)"} gap={5}>
                                                     <GridItem colSpan={1}>
                                                         <Field.Root>
-                                                            <Field.Label>มีพื้นที่ฝ้าเพดานหรือไม่</Field.Label>
+                                                            <Field.Label>ระยะฝ้าถึงหลังคา/คาน</Field.Label>
                                                             <Controller
                                                                 name="ceiling"
                                                                 control={control}
-                                                                rules={{ required: "กรุณาเลือกชนิดฝ้า" }}
+                                                                rules={{ required: "กรุณาเลือกระยะฝ้าถึงหลังคา" }}
                                                                 render={({ field }) => (
                                                                     <FormControl fullWidth error={!!errors.ceiling}>
                                                                         <Select
@@ -2519,7 +2533,7 @@ function MainPage() {
                                                                             }}
                                                                         >
                                                                             <MenuItem value="">
-                                                                                <em>เลือกชนิดฝ้า</em>
+                                                                                <em>เลือกช่องว่างระหว่างฝ้าเพดานถึงหลังคาหรือคาน เพื่อใช้ตรวจสอบการติดตั้งแอร์แบบฝังฝ้า</em>
                                                                             </MenuItem>
                                                                             <MenuItem value="HaveCeilinglessthan">มีน้อยกว่า 30 cm</MenuItem>
                                                                             <MenuItem value="HaveCeilinggreaterthan">มีมากกว่า 30 cm</MenuItem>
@@ -2535,7 +2549,7 @@ function MainPage() {
                                                             />
                                                         </Field.Root>
                                                     </GridItem>
-                                                    <GridItem colSpan={1}>
+                                                    {/* <GridItem colSpan={1}>
                                                         <Field.Root>
                                                             <Field.Label>ความสูงเพดาน (จากพื้นถึงฝ้าเพดาน)</Field.Label>
                                                             <Controller
@@ -2572,17 +2586,17 @@ function MainPage() {
                                                                 )}
                                                             />
                                                         </Field.Root>
-                                                    </GridItem>
+                                                    </GridItem> */}
                                                 </Grid>
                                             </GridItem>
 
                                             <GridItem colSpan={1}>
                                                 <Field.Root>
-                                                    <Field.Label>ประเภทอาคาร</Field.Label>
+                                                    <Field.Label>ลักษณะอาคาร</Field.Label>
                                                     <Controller
                                                         name="buildingType"
                                                         control={control}
-                                                        rules={{ required: "กรุณาเลือกประเภทอาคาร" }}
+                                                        rules={{ required: "กรุณาเลือกลักษณะอาคาร" }}
                                                         render={({ field }) => (
                                                             <FormControl fullWidth error={!!errors.buildingType}>
                                                                 <Select
@@ -2772,7 +2786,7 @@ function MainPage() {
                                                                             <Controller
                                                                                 name={`wallValue.${index}.position`}
                                                                                 control={control}
-                                                                                rules={{ required: "กรุณาเลือกตำแหน่ง" }}
+                                                                                rules={{ required: "กรุณาเลือกตำแหน่งที่อ้างจากขนาดห้อง" }}
                                                                                 render={({ field, fieldState }) => (
                                                                                     <FormControl fullWidth error={!!fieldState.error}>
                                                                                         <Select
@@ -2788,7 +2802,7 @@ function MainPage() {
                                                                                             }}
                                                                                         >
                                                                                             <MenuItem value="">
-                                                                                                <em>เลือกตำแหน่ง</em>
+                                                                                                <em>เลือกตำแหน่งที่อ้างจากขนาดห้อง</em>
                                                                                             </MenuItem>
                                                                                             <MenuItem value="Width">ด้านกว้าง</MenuItem>
                                                                                             <MenuItem value="Depth">ด้านยาว</MenuItem>
@@ -2981,7 +2995,6 @@ function MainPage() {
                                                                         </Table.Cell>
                                                                     </Table.Row>
                                                                 ))}
-
                                                             </Table.Body>
                                                         </Table.Root>
                                                     </Field.Root>
@@ -2997,8 +3010,8 @@ function MainPage() {
                                                 <Field.Root>
                                                     <Field.Label>สภาพแวดล้อมภายในอาคาร</Field.Label>
                                                     <Field.Label>
-                                                        ระบุอีกฝั่งของผนังที่ไม่ได้ติดตั้งเครื่องปรับอากาศ
-                                                        (เฉพาะผนังที่ติดกับห้องอื่น และเลือกได้มากกว่า1)
+                                                        ระบุผนังด้านที่ติดกับห้องอื่นหรือโถงทางเดิน โดยผนังที่เชื่อมกับอีกห้องต้องไม่ติดตั้งเครื่องปรับอากาศ
+                                                        (เลือกได้มากกว่า1)
                                                     </Field.Label>
                                                     <Controller
                                                         name="noAirDirectionValue"
@@ -3090,216 +3103,219 @@ function MainPage() {
                                                                 </Table.Row>
                                                             </Table.Header>
                                                             <Table.Body>
-                                                                {formData.noAirDirectionValue.map((item, index) => {
-                                                                    return (
-                                                                        <Table.Row key={index}>
-                                                                            <Table.Cell textAlign={"center"}>
-                                                                                {
-                                                                                    roomSides.find(
-                                                                                        (d) =>
-                                                                                            d.value === item.directionName
-                                                                                    )?.label
-                                                                                }
-                                                                            </Table.Cell>
+                                                                {formData.noAirDirectionValue.map((item, index) => (
+                                                                    <Table.Row key={index}>
+                                                                        {/* ชื่อทิศ */}
+                                                                        <Table.Cell textAlign="center">
+                                                                            {roomSides.find((d) => d.value === item.directionName)?.label}
+                                                                        </Table.Cell>
 
-                                                                            <Table.Cell>
-                                                                                <Select
-                                                                                    displayEmpty
-                                                                                    sx={{
-                                                                                        width: "100%",
-                                                                                    }}
-                                                                                    value={item.position ?? ""}
-                                                                                    disabled={
-                                                                                        item.directionName === "Top" ||
-                                                                                        item.directionName === "Bottom"
-                                                                                    }
-                                                                                    onChange={(e) => {
-                                                                                        const newValue = e.target.value;
-                                                                                        setFormData((prev) => {
-                                                                                            const updated = [
-                                                                                                ...prev.noAirDirectionValue,
-                                                                                            ];
-                                                                                            updated[index] = {
-                                                                                                ...updated[index],
-                                                                                                position: newValue,
-                                                                                            };
-                                                                                            return {
-                                                                                                ...prev,
-                                                                                                noAirDirectionValue:
-                                                                                                    updated,
-                                                                                            };
-                                                                                        });
-                                                                                    }}
-                                                                                >
-                                                                                    <MenuItem value="Width">
-                                                                                        ด้านกว้าง
-                                                                                    </MenuItem>
-                                                                                    <MenuItem value="Depth">
-                                                                                        ด้านยาว
-                                                                                    </MenuItem>
-                                                                                </Select>
-                                                                            </Table.Cell>
+                                                                        {/* Position */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`noAirDirectionValue.${index}.position`}
+                                                                                control={control}
+                                                                                rules={{
+                                                                                    required:
+                                                                                        item.directionName === "Top" || item.directionName === "Bottom"
+                                                                                            ? false
+                                                                                            : "กรุณาเลือกตำแหน่งที่อ้างจากขนาดห้อง",
+                                                                                }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            disabled={item.directionName === "Top" || item.directionName === "Bottom"}
+                                                                                            onChange={(e) => {
+                                                                                                field.onChange(e);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.noAirDirectionValue];
+                                                                                                    updated[index] = { ...updated[index], position: e.target.value };
+                                                                                                    return { ...prev, noAirDirectionValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="">
+                                                                                                <em>เลือกตำแหน่งที่อ้างจากขนาดห้อง</em>
+                                                                                            </MenuItem>
+                                                                                            <MenuItem value="Width">ด้านกว้าง</MenuItem>
+                                                                                            <MenuItem value="Depth">ด้านยาว</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
 
-                                                                            <Table.Cell>
-                                                                                <Select
-                                                                                    displayEmpty
-                                                                                    sx={{
-                                                                                        width: "100%",
-                                                                                    }}
-                                                                                    value={item.material}
-                                                                                    disabled={
-                                                                                        item.directionName === "Top" ||
-                                                                                        item.directionName === "Bottom"
-                                                                                    }
-                                                                                    onChange={(e) => {
-                                                                                        const newValue = e.target.value;
-                                                                                        setFormData((prev) => {
-                                                                                            const updated = [
-                                                                                                ...prev.noAirDirectionValue,
-                                                                                            ];
-                                                                                            updated[index] = {
-                                                                                                ...updated[index],
-                                                                                                material: newValue,
-                                                                                            };
-                                                                                            return {
-                                                                                                ...prev,
-                                                                                                noAirDirectionValue:
-                                                                                                    updated,
-                                                                                            };
-                                                                                        });
-                                                                                    }}
-                                                                                >
-                                                                                    <MenuItem value="BrickPlaster">
-                                                                                        ผนังอิฐฉาบปูน
-                                                                                    </MenuItem>
-                                                                                    <MenuItem value="WallwithInsulation">
-                                                                                        ผนังมีฉนวนตรงกลาง
-                                                                                    </MenuItem>
-                                                                                    <MenuItem value="Prefabricated">
-                                                                                        ผนังสำเร็จรูป
-                                                                                    </MenuItem>
-                                                                                    <MenuItem value="Glass">กระจก</MenuItem>
-                                                                                </Select>
-                                                                            </Table.Cell>
+                                                                        {/* Material */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`noAirDirectionValue.${index}.material`}
+                                                                                control={control}
+                                                                                rules={{
+                                                                                    required:
+                                                                                        item.directionName === "Top" || item.directionName === "Bottom"
+                                                                                            ? false
+                                                                                            : "กรุณาเลือกวัสดุ",
+                                                                                }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            disabled={item.directionName === "Top" || item.directionName === "Bottom"}
+                                                                                            onChange={(e) => {
+                                                                                                field.onChange(e);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.noAirDirectionValue];
+                                                                                                    updated[index] = { ...updated[index], material: e.target.value };
+                                                                                                    return { ...prev, noAirDirectionValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="BrickPlaster">ผนังอิฐฉาบปูน</MenuItem>
+                                                                                            <MenuItem value="WallwithInsulation">ผนังมีฉนวนตรงกลาง</MenuItem>
+                                                                                            <MenuItem value="Prefabricated">ผนังสำเร็จรูป</MenuItem>
+                                                                                            <MenuItem value="Glass">กระจก</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
 
-                                                                            <Table.Cell>
-                                                                                <Select
-                                                                                    displayEmpty
-                                                                                    sx={{
-                                                                                        width: "100%",
-                                                                                    }}
-                                                                                    disabled={item.material !== "Glass"}
-                                                                                    value={item.glassType}
-                                                                                    onChange={(e) => {
-                                                                                        const newValue = e.target.value;
-                                                                                        setFormData((prev) => {
-                                                                                            const updated = [
-                                                                                                ...prev.noAirDirectionValue,
-                                                                                            ];
-                                                                                            updated[index] = {
-                                                                                                ...updated[index],
-                                                                                                glassType: newValue,
-                                                                                            };
-                                                                                            return {
-                                                                                                ...prev,
-                                                                                                noAirDirectionValue:
-                                                                                                    updated,
-                                                                                            };
-                                                                                        });
-                                                                                    }}
-                                                                                >
-                                                                                    <MenuItem value={"SingleGlazing"}>
-                                                                                        กระจกใสธรรมดา
-                                                                                    </MenuItem>
-                                                                                    <MenuItem value={"Tinted"}>
-                                                                                        กระจกสี
-                                                                                    </MenuItem>
-                                                                                    <MenuItem value={"Low-E"}>
-                                                                                        กระจก Low-E
-                                                                                    </MenuItem>
-                                                                                </Select>
-                                                                            </Table.Cell>
+                                                                        {/* Glass Type */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`noAirDirectionValue.${index}.glassType`}
+                                                                                control={control}
+                                                                                rules={{
+                                                                                    required: item.material === "Glass" ? "กรุณาเลือกชนิดกระจก" : false,
+                                                                                }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl fullWidth error={!!fieldState.error} disabled={item.material !== "Glass"}>
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                field.onChange(e);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.noAirDirectionValue];
+                                                                                                    updated[index] = { ...updated[index], glassType: e.target.value };
+                                                                                                    return { ...prev, noAirDirectionValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="SingleGlazing">กระจกใสธรรมดา</MenuItem>
+                                                                                            <MenuItem value="Tinted">กระจกสี</MenuItem>
+                                                                                            <MenuItem value="Low-E">กระจก Low-E</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
 
-                                                                            <Table.Cell>
-                                                                                <Select
-                                                                                    displayEmpty
-                                                                                    sx={{
-                                                                                        width: "100%",
-                                                                                    }}
-                                                                                    disabled={
-                                                                                        !(
-                                                                                            item.directionName === "Top" ||
-                                                                                            item.directionName === "Bottom"
-                                                                                        )
-                                                                                    }
-                                                                                    value={item.haveInsulation}
-                                                                                    onChange={(e) => {
-                                                                                        const newValue =
-                                                                                            e.target.value === "true";
-                                                                                        setFormData((prev) => {
-                                                                                            const updated = [
-                                                                                                ...prev.noAirDirectionValue,
-                                                                                            ];
-                                                                                            updated[index] = {
-                                                                                                ...updated[index],
-                                                                                                haveInsulation: newValue,
-                                                                                            };
-                                                                                            return {
-                                                                                                ...prev,
-                                                                                                noAirDirectionValue:
-                                                                                                    updated,
-                                                                                            };
-                                                                                        });
-                                                                                    }}
-                                                                                >
-                                                                                    <MenuItem value={"true"}>มี</MenuItem>
-                                                                                    <MenuItem value={"false"}>
-                                                                                        ไม่มี
-                                                                                    </MenuItem>
-                                                                                </Select>
-                                                                            </Table.Cell>
+                                                                        {/* Have Insulation */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`noAirDirectionValue.${index}.haveInsulation`}
+                                                                                control={control}
+                                                                                rules={{
+                                                                                    required:
+                                                                                        item.directionName === "Top" || item.directionName === "Bottom"
+                                                                                            ? "กรุณาเลือกว่ามีฉนวนหรือไม่"
+                                                                                            : false,
+                                                                                }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl
+                                                                                        fullWidth
+                                                                                        error={!!fieldState.error}
+                                                                                        disabled={!(item.directionName === "Top" || item.directionName === "Bottom")}
+                                                                                    >
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                const newValue = e.target.value === "true";
+                                                                                                field.onChange(e.target.value);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.noAirDirectionValue];
+                                                                                                    updated[index] = { ...updated[index], haveInsulation: newValue };
+                                                                                                    return { ...prev, noAirDirectionValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="true">มี</MenuItem>
+                                                                                            <MenuItem value="false">ไม่มี</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
 
-                                                                            <Table.Cell>
-                                                                                <Select
-                                                                                    displayEmpty
-                                                                                    sx={{
-                                                                                        width: "100%",
-                                                                                    }}
-                                                                                    disabled={
-                                                                                        !(
-                                                                                            item.directionName === "Top" ||
-                                                                                            item.directionName === "Bottom"
-                                                                                        )
-                                                                                    }
-                                                                                    value={item.haveCeiling}
-                                                                                    onChange={(e) => {
-                                                                                        const newValue =
-                                                                                            e.target.value === "true";
-                                                                                        setFormData((prev) => {
-                                                                                            const updated = [
-                                                                                                ...prev.noAirDirectionValue,
-                                                                                            ];
-                                                                                            updated[index] = {
-                                                                                                ...updated[index],
-                                                                                                haveCeiling: newValue,
-                                                                                            };
-                                                                                            return {
-                                                                                                ...prev,
-                                                                                                noAirDirectionValue:
-                                                                                                    updated,
-                                                                                            };
-                                                                                        });
-                                                                                    }}
-                                                                                >
-                                                                                    <MenuItem value={"true"}>มี</MenuItem>
-                                                                                    <MenuItem value={"false"}>
-                                                                                        ไม่มี
-                                                                                    </MenuItem>
-                                                                                </Select>
-                                                                            </Table.Cell>
-                                                                        </Table.Row>
-                                                                    );
-                                                                })}
+                                                                        {/* Have Ceiling */}
+                                                                        <Table.Cell>
+                                                                            <Controller
+                                                                                name={`noAirDirectionValue.${index}.haveCeiling`}
+                                                                                control={control}
+                                                                                rules={{
+                                                                                    required:
+                                                                                        item.directionName === "Top" || item.directionName === "Bottom"
+                                                                                            ? "กรุณาเลือกว่ามีฝ้าเพดานหรือไม่"
+                                                                                            : false,
+                                                                                }}
+                                                                                render={({ field, fieldState }) => (
+                                                                                    <FormControl
+                                                                                        fullWidth
+                                                                                        error={!!fieldState.error}
+                                                                                        disabled={!(item.directionName === "Top" || item.directionName === "Bottom")}
+                                                                                    >
+                                                                                        <Select
+                                                                                            {...field}
+                                                                                            displayEmpty
+                                                                                            onChange={(e) => {
+                                                                                                const newValue = e.target.value === "true";
+                                                                                                field.onChange(e.target.value);
+                                                                                                setFormData((prev) => {
+                                                                                                    const updated = [...prev.noAirDirectionValue];
+                                                                                                    updated[index] = { ...updated[index], haveCeiling: newValue };
+                                                                                                    return { ...prev, noAirDirectionValue: updated };
+                                                                                                });
+                                                                                            }}
+                                                                                        >
+                                                                                            <MenuItem value="true">มี</MenuItem>
+                                                                                            <MenuItem value="false">ไม่มี</MenuItem>
+                                                                                        </Select>
+                                                                                        {fieldState.error && (
+                                                                                            <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                                {fieldState.error.message}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </FormControl>
+                                                                                )}
+                                                                            />
+                                                                        </Table.Cell>
+                                                                    </Table.Row>
+                                                                ))}
                                                             </Table.Body>
                                                         </Table.Root>
                                                     </Field.Root>
@@ -3486,7 +3502,7 @@ function MainPage() {
                                             <GridItem>
                                                 <Field.Root>
                                                     <Field.Label>ประตู (Door)</Field.Label>
-                                                    <Field.Label>ระบุทิศทาง (เลือกได้มากกว่า1)</Field.Label>
+                                                    <Field.Label>ระบุทิศติดผนังด้านใด (เลือกได้มากกว่า1)</Field.Label>
                                                     <Controller
                                                         name="doorValue"
                                                         control={control}
@@ -3809,7 +3825,7 @@ function MainPage() {
                                             <GridItem>
                                                 <Field.Root>
                                                     <Field.Label>หน้าต่าง (Window)</Field.Label>
-                                                    <Field.Label>ระบุทิศทาง (เลือกได้มากกว่า1)</Field.Label>
+                                                    <Field.Label>ระบุทิศติดผนังด้านใด (เลือกได้มากกว่า1)</Field.Label>
                                                     <Controller
                                                         name="windowValue"
                                                         control={control}
@@ -4180,14 +4196,14 @@ function MainPage() {
                                                     <Field.Label>ผู้อยู่อาศัย (People)</Field.Label>
                                                     <Box display={"flex"} alignItems={"center"} gap={2}>
                                                         <Text fontSize={16} marginBottom={2}>
-                                                            จำนวนผู้อยู่อาศัยในอาคาร
+                                                            จำนวนผู้อยู่อาศัยในห้องหรืออาคารที่พิจารณา
                                                         </Text>
                                                         <Controller
                                                             name="people"
                                                             control={control}
                                                             rules={{
-                                                                required: "กรุณากรอกจำนวนผู้ใช้งาน",
-                                                                min: { value: 1, message: "จำนวนผู้ใช้งานต้องไม่น้อยกว่า 1" },
+                                                                required: "กรุณากรอกจำนวนผู้อยู่อาศัย",
+                                                                min: { value: 1, message: "จำนวนผู้อยู่อาศัยต้องไม่น้อยกว่า 1" },
                                                             }}
                                                             render={({ field, fieldState }) => (
                                                                 <TextField
@@ -4319,19 +4335,10 @@ function MainPage() {
                         <InstallationPositionSelector
                             formData={formData}
                             setFormData={setFormData}
+                            setTabValue={setTabValue}
                             setCalculateVariable={setCalculateVariable}
                             directions={directions}
                         />
-                        <Collapse in={!(selectedOption.buildingType === null || selectedOption.subRoom === null)} timeout={400} unmountOnExit>
-                            <Flex width={"100%"} justifyContent={"space-between"}>
-                                <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("three")}>
-                                    Previous
-                                </Button>
-                                <Button width={100} backgroundColor={"#003475"} fontSize={20} onClick={() => setTabValue("five")}>
-                                    Next
-                                </Button>
-                            </Flex>
-                        </Collapse>
                     </Tabs.Content>
                     <Tabs.Content value={"five"}>
                         <Box>
@@ -4375,9 +4382,9 @@ function MainPage() {
 
                                                     {selectedOption.buildingType !== "Home" && (
                                                         <Table.Row>
-                                                            <Table.Cell className="strong-text-blue">
+                                                            <Table.Cell colSpan={3} className="strong-text-blue">
                                                                 <Field.Root>
-                                                                    <Field.Label>ขนาดกิจการ</Field.Label>
+                                                                    <Field.Label marginTop={2}>ขนาดกิจการ</Field.Label>
                                                                     <Select
                                                                         displayEmpty
                                                                         fullWidth
@@ -4388,6 +4395,7 @@ function MainPage() {
                                                                                 businessSize: e.target.value,
                                                                             }))
                                                                         }
+                                                                        sx={{ marginBottom: 1.2 }}
                                                                     >
                                                                         <MenuItem value={"Small"}>Small</MenuItem>
                                                                         <MenuItem value={"Large"}>Large</MenuItem>
@@ -4399,7 +4407,117 @@ function MainPage() {
 
                                                     <Table.Row>
                                                         <Table.Cell className="strong-text-blue">
-                                                            คำนวณค่าไฟรายปี
+                                                            จำนวนหน่วยที่ใช้ต่อเดือน
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text">
+                                                            {
+                                                                selectedOption.businessSize || selectedOption.buildingType === "Home" ?
+                                                                    (
+                                                                        calculateVariable.electricityCost?.E_kWh_month?.toLocaleString(
+                                                                            "en-US",
+                                                                            {
+                                                                                minimumFractionDigits: 2,
+                                                                                maximumFractionDigits: 2,
+                                                                            }
+                                                                        )
+                                                                    ) : ("0.00")
+                                                            }
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text-blue">kWh</Table.Cell>
+                                                    </Table.Row>
+
+                                                    <Table.Row>
+                                                        <Table.Cell className="strong-text-blue">
+                                                            ค่าไฟพื้นฐาน
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text">
+                                                            {
+                                                                selectedOption.businessSize || selectedOption.buildingType === "Home" ?
+                                                                    (
+                                                                        calculateVariable.electricityCost?.base_cost?.toLocaleString(
+                                                                            "en-US",
+                                                                            {
+                                                                                minimumFractionDigits: 2,
+                                                                                maximumFractionDigits: 2,
+                                                                            }
+                                                                        )
+                                                                    ) : ("0.00")
+                                                            }
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text-blue">บาท/เดือน</Table.Cell>
+                                                    </Table.Row>
+
+                                                    <Table.Row>
+                                                        <Table.Cell className="strong-text-blue">
+                                                            ค่าไฟฟ้าแปรผัน
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text">
+                                                            {
+                                                                selectedOption.businessSize || selectedOption.buildingType === "Home" ?
+                                                                    (
+                                                                        calculateVariable.electricityCost?.Ft_total?.toLocaleString(
+                                                                            "en-US",
+                                                                            {
+                                                                                minimumFractionDigits: 2,
+                                                                                maximumFractionDigits: 2,
+                                                                            }
+                                                                        )
+                                                                    ) : ("0.00")
+                                                            }
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text-blue">บาท/เดือน</Table.Cell>
+                                                    </Table.Row>
+
+                                                    <Table.Row>
+                                                        <Table.Cell className="strong-text-blue">
+                                                            ค่าภาษีมูลค่าเพิ่ม
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text">
+                                                            {
+                                                                selectedOption.businessSize || selectedOption.buildingType === "Home" ?
+                                                                    (
+                                                                        calculateVariable.electricityCost?.vat?.toLocaleString(
+                                                                            "en-US",
+                                                                            {
+                                                                                minimumFractionDigits: 2,
+                                                                                maximumFractionDigits: 2,
+                                                                            }
+                                                                        )
+                                                                    ) : ("0.00")
+                                                            }
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text-blue">บาท/เดือน</Table.Cell>
+                                                    </Table.Row>
+
+                                                    <Table.Row>
+                                                        <Table.Cell className="strong-text-blue" >
+                                                        </Table.Cell>
+                                                    </Table.Row>
+
+                                                    <Table.Row>
+                                                        <Table.Cell className="strong-text-blue" >
+                                                            ค่าไฟฟ้ารายเดือนทั้งหมด
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text">
+                                                            {
+                                                                selectedOption.businessSize || selectedOption.buildingType === "Home" ?
+                                                                    (
+                                                                        calculateVariable.electricityCost?.monthly_cost?.toLocaleString(
+                                                                            "en-US",
+                                                                            {
+                                                                                minimumFractionDigits: 2,
+                                                                                maximumFractionDigits: 2,
+                                                                            }
+                                                                        )
+                                                                    ) : ("0.00")
+                                                            }
+                                                        </Table.Cell>
+                                                        <Table.Cell className="strong-text-blue">บาท/เดือน</Table.Cell>
+                                                    </Table.Row>
+
+                                                    <Table.Row>
+                                                        <Table.Cell className="strong-text-blue">
+                                                            ค่าไฟฟ้ารายปีทั้งหมด
                                                         </Table.Cell>
                                                         <Table.Cell className="strong-text">
                                                             {
