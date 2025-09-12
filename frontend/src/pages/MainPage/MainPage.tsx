@@ -299,7 +299,7 @@ type HourData = {
 };
 
 function MainPage() {
-    const { control, handleSubmit, formState: { errors } } = useForm<FormDataErrorProps>({
+    const { control, handleSubmit, formState: { errors }, setValue } = useForm<FormDataErrorProps>({
         defaultValues: {
             province: "",
             people: 1,
@@ -338,29 +338,6 @@ function MainPage() {
         businessSize: null,
     });
 
-    // const [formData, setFormData] = useState<FormDataProps>({
-    //     province: "",
-    //     people: 1,
-    //     width: 3,
-    //     depth: 3,
-    //     height: 3,
-    //     startTime: "",
-    //     endTime: "",
-    //     ceiling: "",
-    //     ceilingHeight: "",
-    //     buildingType: "",
-    //     roomPosition: "",
-    //     roofType: "",
-    //     kRoofColor: 0,
-    //     ballastFactor: 1,
-    //     noAirDirectionValue: [],
-    //     equipmentValue: [],
-    //     doorValue: [],
-    //     windowValue: [],
-    //     wallValue: [],
-    //     floorValue: { uFloor: 0, qFloor: 0 },
-    //     roofValue: { qRoofByMonth: [] }
-    // });
     const [formData, setFormData] = useState<FormDataProps>({
         province: "",
         people: 1,
@@ -2607,7 +2584,9 @@ function MainPage() {
                                                                         setFormData((prev) => ({
                                                                             ...prev,
                                                                             buildingType: e.target.value, // อัปเดต state เก่าด้วย
+                                                                            roomPosition: "",
                                                                         }));
+                                                                        setValue("roomPosition", "")
                                                                     }}
                                                                 >
                                                                     <MenuItem value="">
@@ -2646,6 +2625,14 @@ function MainPage() {
                                                                                 ...prev,
                                                                                 roomPosition: e.target.value, // อัปเดต state เดิม
                                                                             }));
+
+                                                                            if (e.target.value !== "Bottom") {
+                                                                                setFormData((prev) => ({
+                                                                                    ...prev,
+                                                                                    floorValue: {uFloor: 0, qFloor: 0},
+                                                                                }));
+                                                                                setValue("floorValue", {uFloor: "", qFloor: ""})
+                                                                            }
                                                                         }}
                                                                     >
                                                                         <MenuItem value="">
@@ -4537,6 +4524,12 @@ function MainPage() {
                                                     </Table.Row>
                                                 </Table.Body>
                                             </Table.Root>
+
+                                            <Box>
+                                                <Text color={"gray"} fontSize={14} marginTop={2}>
+                                                    ค่าไฟข้างต้นเป็นเพียงการประมาณการจากการคำนวณตามอัตราไฟฟ้าแบบขั้นบันได พร้อม Ft และ VAT 7% โดยอิงจากขนาด BTU ของเครื่องปรับอากาศเท่านั้น ค่าไฟจริงอาจสูงหรือต่ำกว่านี้ ขึ้นอยู่กับปริมาณการใช้ไฟฟ้าและพฤติกรรมการใช้งานของผู้ใช้
+                                                </Text>
+                                            </Box>
 
                                             <Box display={"flex"} gap={2} marginY={4}>
                                                 <Text className="strong-text-blue">ประเภทแอร์ที่เลือก :</Text>
