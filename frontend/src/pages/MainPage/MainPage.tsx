@@ -2809,6 +2809,15 @@ function MainPage() {
                                                                                                     updated[index] = { ...updated[index], material: e.target.value };
                                                                                                     return { ...prev, wallValue: updated };
                                                                                                 });
+
+                                                                                                if (e.target.value === "Glass") {
+                                                                                                    setFormData((prev) => {
+                                                                                                        const updated = [...prev.wallValue];
+                                                                                                        updated[index] = { ...updated[index], kWallColor: 0 };
+                                                                                                        return { ...prev, wallValue: updated };
+                                                                                                    });
+                                                                                                    setValue(`wallValue.${index}.kWallColor`, "");
+                                                                                                }
                                                                                             }}
                                                                                         >
                                                                                             <MenuItem value="BrickPlaster">ผนังอิฐฉาบปูน</MenuItem>
@@ -2939,9 +2948,9 @@ function MainPage() {
                                                                             <Controller
                                                                                 name={`wallValue.${index}.kWallColor`}
                                                                                 control={control}
-                                                                                rules={{ required: "กรุณาเลือกสีผนัง" }}
+                                                                                rules={{ required: item.material !== "Glass" ? "กรุณาเลือกสีผนัง" : false }}
                                                                                 render={({ field, fieldState }) => (
-                                                                                    <FormControl fullWidth error={!!fieldState.error}>
+                                                                                    <FormControl fullWidth error={!!fieldState.error} disabled={item.material === "Glass"}>
                                                                                         <Select
                                                                                             {...field}
                                                                                             displayEmpty
