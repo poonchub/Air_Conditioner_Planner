@@ -1975,7 +1975,15 @@ function MainPage() {
         console.log("P_kW: ", P_kW);
 
         // หน่วยไฟฟ้าต่อวัน
-        const E_kWh_day = P_kW * (Number(formData.endTime) - Number(formData.startTime));
+        const start = Number(formData.startTime);
+        const end = Number(formData.endTime);
+        
+        let hoursUsed = end - start;
+        if (hoursUsed <= 0) {
+            hoursUsed += 24; // กรณีข้ามวัน
+        }
+
+        const E_kWh_day = P_kW * hoursUsed;
 
         // หน่วยไฟฟ้าต่อเดือน
         let work_days_per_year: number = 0;
@@ -2597,9 +2605,17 @@ function MainPage() {
                                                                             if (e.target.value !== "Bottom") {
                                                                                 setFormData((prev) => ({
                                                                                     ...prev,
-                                                                                    floorValue: {uFloor: 0, qFloor: 0},
+                                                                                    floorValue: { uFloor: 0, qFloor: 0 },
                                                                                 }));
-                                                                                setValue("floorValue", {uFloor: "", qFloor: ""})
+                                                                                setValue("floorValue", { uFloor: "", qFloor: "" })
+                                                                            }
+
+                                                                            if (e.target.value !== "Top") {
+                                                                                setFormData((prev) => ({
+                                                                                    ...prev,
+                                                                                    roofValue: { qRoofByMonth: [] },
+                                                                                }));
+                                                                                setValue("roofValue", { qRoofByMonth: [] })
                                                                             }
                                                                         }}
                                                                     >
@@ -3280,97 +3296,99 @@ function MainPage() {
                                     </GridItem>
 
                                     {/* Roof */}
-                                    <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} height={"100%"}>
-                                        <Grid gap={5}>
-                                            <GridItem>
-                                                <Field.Root>
-                                                    <Field.Label>หลังคา (Roof)</Field.Label>
-                                                    <Field.Label>ระบุข้อมูลหลังคา</Field.Label>
-                                                    <Table.Root size="sm" variant={"outline"}>
-                                                        <Table.Header>
-                                                            <Table.Row>
-                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                    วัสดุ
-                                                                </Table.ColumnHeader>
-                                                                <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                    สีภายนอก
-                                                                </Table.ColumnHeader>
-                                                            </Table.Row>
-                                                        </Table.Header>
-                                                        <Table.Body>
-                                                            <Table.Row>
-                                                                {/* Roof Type */}
-                                                                <Table.Cell>
-                                                                    <Controller
-                                                                        name="roofType"
-                                                                        control={control}
-                                                                        rules={{ required: "กรุณาเลือกประเภทหลังคา" }}
-                                                                        render={({ field, fieldState }) => (
-                                                                            <FormControl fullWidth error={!!fieldState.error}>
-                                                                                <Select
-                                                                                    {...field}
-                                                                                    displayEmpty
-                                                                                    onChange={(e) => {
-                                                                                        field.onChange(e.target.value); // อัปเดต react-hook-form
-                                                                                        setFormData((prev) => ({
-                                                                                            ...prev,
-                                                                                            roofType: e.target.value, // อัปเดต state
-                                                                                        }));
-                                                                                    }}
-                                                                                >
-                                                                                    <MenuItem value="Concrete">หลังคาคอนกรีต</MenuItem>
-                                                                                    <MenuItem value="ConcreteTile">หลังคากระเบื้องคอนกรีต</MenuItem>
-                                                                                    <MenuItem value="MetalSheet">หลังคาเมทัลชีท</MenuItem>
-                                                                                </Select>
-                                                                                {fieldState.error && (
-                                                                                    <p style={{ color: "red", fontSize: "0.8rem" }}>
-                                                                                        {fieldState.error.message}
-                                                                                    </p>
-                                                                                )}
-                                                                            </FormControl>
-                                                                        )}
-                                                                    />
-                                                                </Table.Cell>
+                                    <Collapse in={formData.buildingType === "Single" || (formData.buildingType === "Multi" && formData.roomPosition === "Top")} timeout={400} unmountOnExit>
+                                        <GridItem border={"1px solid #c5c5c6"} borderRadius={10} padding={5} height={"100%"}>
+                                            <Grid gap={5}>
+                                                <GridItem>
+                                                    <Field.Root>
+                                                        <Field.Label>หลังคา (Roof)</Field.Label>
+                                                        <Field.Label>ระบุข้อมูลหลังคา</Field.Label>
+                                                        <Table.Root size="sm" variant={"outline"}>
+                                                            <Table.Header>
+                                                                <Table.Row>
+                                                                    <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                        วัสดุ
+                                                                    </Table.ColumnHeader>
+                                                                    <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
+                                                                        สีภายนอก
+                                                                    </Table.ColumnHeader>
+                                                                </Table.Row>
+                                                            </Table.Header>
+                                                            <Table.Body>
+                                                                <Table.Row>
+                                                                    {/* Roof Type */}
+                                                                    <Table.Cell>
+                                                                        <Controller
+                                                                            name="roofType"
+                                                                            control={control}
+                                                                            rules={{ required: "กรุณาเลือกประเภทหลังคา" }}
+                                                                            render={({ field, fieldState }) => (
+                                                                                <FormControl fullWidth error={!!fieldState.error}>
+                                                                                    <Select
+                                                                                        {...field}
+                                                                                        displayEmpty
+                                                                                        onChange={(e) => {
+                                                                                            field.onChange(e.target.value); // อัปเดต react-hook-form
+                                                                                            setFormData((prev) => ({
+                                                                                                ...prev,
+                                                                                                roofType: e.target.value, // อัปเดต state
+                                                                                            }));
+                                                                                        }}
+                                                                                    >
+                                                                                        <MenuItem value="Concrete">หลังคาคอนกรีต</MenuItem>
+                                                                                        <MenuItem value="ConcreteTile">หลังคากระเบื้องคอนกรีต</MenuItem>
+                                                                                        <MenuItem value="MetalSheet">หลังคาเมทัลชีท</MenuItem>
+                                                                                    </Select>
+                                                                                    {fieldState.error && (
+                                                                                        <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                            {fieldState.error.message}
+                                                                                        </p>
+                                                                                    )}
+                                                                                </FormControl>
+                                                                            )}
+                                                                        />
+                                                                    </Table.Cell>
 
-                                                                {/* Roof Color */}
-                                                                <Table.Cell>
-                                                                    <Controller
-                                                                        name="kRoofColor"
-                                                                        control={control}
-                                                                        rules={{ required: "กรุณาเลือกสีหลังคา" }}
-                                                                        render={({ field, fieldState }) => (
-                                                                            <FormControl fullWidth error={!!fieldState.error}>
-                                                                                <Select
-                                                                                    {...field}
-                                                                                    displayEmpty
-                                                                                    onChange={(e) => {
-                                                                                        const newValue = Number(e.target.value);
-                                                                                        field.onChange(newValue); // อัปเดต react-hook-form
-                                                                                        setFormData((prev) => ({
-                                                                                            ...prev,
-                                                                                            kRoofColor: newValue, // อัปเดต state
-                                                                                        }));
-                                                                                    }}
-                                                                                >
-                                                                                    <MenuItem value={0.5}>สีสว่าง</MenuItem>
-                                                                                    <MenuItem value={1}>สีเข้ม</MenuItem>
-                                                                                </Select>
-                                                                                {fieldState.error && (
-                                                                                    <p style={{ color: "red", fontSize: "0.8rem" }}>
-                                                                                        {fieldState.error.message}
-                                                                                    </p>
-                                                                                )}
-                                                                            </FormControl>
-                                                                        )}
-                                                                    />
-                                                                </Table.Cell>
-                                                            </Table.Row>
-                                                        </Table.Body>
-                                                    </Table.Root>
-                                                </Field.Root>
-                                            </GridItem>
-                                        </Grid>
-                                    </GridItem>
+                                                                    {/* Roof Color */}
+                                                                    <Table.Cell>
+                                                                        <Controller
+                                                                            name="kRoofColor"
+                                                                            control={control}
+                                                                            rules={{ required: "กรุณาเลือกสีหลังคา" }}
+                                                                            render={({ field, fieldState }) => (
+                                                                                <FormControl fullWidth error={!!fieldState.error}>
+                                                                                    <Select
+                                                                                        {...field}
+                                                                                        displayEmpty
+                                                                                        onChange={(e) => {
+                                                                                            const newValue = Number(e.target.value);
+                                                                                            field.onChange(newValue); // อัปเดต react-hook-form
+                                                                                            setFormData((prev) => ({
+                                                                                                ...prev,
+                                                                                                kRoofColor: newValue, // อัปเดต state
+                                                                                            }));
+                                                                                        }}
+                                                                                    >
+                                                                                        <MenuItem value={0.5}>สีสว่าง</MenuItem>
+                                                                                        <MenuItem value={1}>สีเข้ม</MenuItem>
+                                                                                    </Select>
+                                                                                    {fieldState.error && (
+                                                                                        <p style={{ color: "red", fontSize: "0.8rem" }}>
+                                                                                            {fieldState.error.message}
+                                                                                        </p>
+                                                                                    )}
+                                                                                </FormControl>
+                                                                            )}
+                                                                        />
+                                                                    </Table.Cell>
+                                                                </Table.Row>
+                                                            </Table.Body>
+                                                        </Table.Root>
+                                                    </Field.Root>
+                                                </GridItem>
+                                            </Grid>
+                                        </GridItem>
+                                    </Collapse>
 
                                     {/* Floor */}
                                     <Collapse
@@ -3743,7 +3761,7 @@ function MainPage() {
                                                                             <Controller
                                                                                 name={`doorValue.${index}.quantity`}
                                                                                 control={control}
-                                                                                rules={{ 
+                                                                                rules={{
                                                                                     required: "กรุณากรอกจำนวนประตู",
                                                                                     min: { value: 1, message: "จำนวนต้องไม่น้อยกว่า 1" }
                                                                                 }}
@@ -4069,7 +4087,7 @@ function MainPage() {
                                                                             <Controller
                                                                                 name={`windowValue.${index}.quantity`}
                                                                                 control={control}
-                                                                                rules={{ 
+                                                                                rules={{
                                                                                     required: "กรุณากรอกจำนวนหน้าต่าง",
                                                                                     min: { value: 1, message: "จำนวนต้องไม่น้อยกว่า 1" }
                                                                                 }}
