@@ -3081,7 +3081,7 @@ function MainPage() {
                                                                         fontWeight={600}
                                                                         textAlign={"center"}
                                                                     >
-                                                                        ฝ้าเพดาน
+                                                                        ติดฝ้าหรือไม่
                                                                     </Table.ColumnHeader>
                                                                 </Table.Row>
                                                             </Table.Header>
@@ -3285,8 +3285,8 @@ function MainPage() {
                                                                                                 });
                                                                                             }}
                                                                                         >
-                                                                                            <MenuItem value="true">มี</MenuItem>
-                                                                                            <MenuItem value="false">ไม่มี</MenuItem>
+                                                                                            <MenuItem value="true">ติด</MenuItem>
+                                                                                            <MenuItem value="false">ไม่ติด</MenuItem>
                                                                                         </Select>
                                                                                         {fieldState.error && (
                                                                                             <p style={{ color: "red", fontSize: "0.8rem" }}>
