@@ -2313,7 +2313,7 @@ function MainPage() {
                                                                     ด้านที่ยาวที่สุด
                                                                 </Table.ColumnHeader>
                                                                 <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                    สูง
+                                                                    ความสูง
                                                                 </Table.ColumnHeader>
                                                             </Table.Row>
                                                         </Table.Header>
