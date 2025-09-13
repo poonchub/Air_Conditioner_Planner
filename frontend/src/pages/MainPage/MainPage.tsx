@@ -4366,8 +4366,8 @@ function MainPage() {
                                                                         }
                                                                         sx={{ marginBottom: 1.2 }}
                                                                     >
-                                                                        <MenuItem value={"Small"}>Small</MenuItem>
-                                                                        <MenuItem value={"Large"}>Large</MenuItem>
+                                                                        <MenuItem value={"Small"}>ขนาดเล็ก</MenuItem>
+                                                                        <MenuItem value={"Large"}>ขนาดกลาง</MenuItem>
                                                                     </Select>
                                                                 </Field.Root>
                                                             </Table.Cell>
