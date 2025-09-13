@@ -2307,10 +2307,10 @@ function MainPage() {
                                                         <Table.Header>
                                                             <Table.Row>
                                                                 <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                    กว้าง
+                                                                    ด้านที่สั้นที่สุด
                                                                 </Table.ColumnHeader>
                                                                 <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
-                                                                    ยาว
+                                                                    ด้านที่ยาวที่สุด
                                                                 </Table.ColumnHeader>
                                                                 <Table.ColumnHeader fontWeight={600} textAlign={"center"}>
                                                                     สูง
