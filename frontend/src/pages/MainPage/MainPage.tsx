@@ -2754,9 +2754,9 @@ function MainPage() {
                                                                                             }}
                                                                                         >
                                                                                             <MenuItem value="">
-                                                                                                <em>เลือกตำแหน่งที่อ้างอิงจากขนาดห้อง</em>
+                                                                                                <em>ระบุว่าผนังเป็นด้านสั้นหรือด้านยาว</em>
                                                                                             </MenuItem>
-                                                                                            <MenuItem value="Width">ด้านด้านสั้น</MenuItem>
+                                                                                            <MenuItem value="Width">ด้านสั้น</MenuItem>
                                                                                             <MenuItem value="Depth">ด้านยาว</MenuItem>
                                                                                         </Select>
                                                                                         {fieldState.error && (
