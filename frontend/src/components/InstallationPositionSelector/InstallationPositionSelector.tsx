@@ -499,7 +499,7 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                 <Field.Root>
                                     <Field.Label>ผนัง (wall)</Field.Label>
                                     <Field.Label>
-                                        ระบุทิศผนังภายในด้านที่เหลือทั้งหมด
+                                        ระบุผนังด้านในที่เหลือทั้งหมด ไม่นับผนังที่ติดภายนอกสิ่งแวดล้อม
                                     </Field.Label>
                                     <Controller
                                         name="wallValue"
@@ -581,7 +581,7 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                                             <Controller
                                                                 name={`wallValue.${index}.position`}
                                                                 control={control}
-                                                                rules={{ required: "กรุณาเลือกตำแหน่งที่อ้างอิงจากขนาดห้อง" }}
+                                                                rules={{ required: "กรุณาระบุว่าผนังทิศนี้เป็นด้านสั้นหรือด้านยาว" }}
                                                                 // @ts-ignore
                                                                 render={({ field, fieldState }) => (
                                                                     <FormControl
@@ -607,7 +607,7 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                                                             }}
                                                                         >
                                                                             <MenuItem value="">
-                                                                                <em>ระบุว่าผนังเป็นด้านสั้นหรือด้านยาว</em>
+                                                                                <em>ระบุว่าผนังทิศนี้เป็นด้านสั้นหรือด้านยาว</em>
                                                                             </MenuItem>
                                                                             <MenuItem value="Width">ด้านสั้น</MenuItem>
                                                                             <MenuItem value="Depth">ด้านยาว</MenuItem>

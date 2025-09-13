@@ -2738,7 +2738,7 @@ function MainPage() {
                                                                             <Controller
                                                                                 name={`wallValue.${index}.position`}
                                                                                 control={control}
-                                                                                rules={{ required: "กรุณาเลือกตำแหน่งที่อ้างอิงจากขนาดห้อง" }}
+                                                                                rules={{ required: "ระบุว่าผนังทิศนี้เป็นด้านสั้นหรือด้านยาว" }}
                                                                                 render={({ field, fieldState }) => (
                                                                                     <FormControl fullWidth error={!!fieldState.error}>
                                                                                         <Select
@@ -2754,7 +2754,7 @@ function MainPage() {
                                                                                             }}
                                                                                         >
                                                                                             <MenuItem value="">
-                                                                                                <em>ระบุว่าผนังเป็นด้านสั้นหรือด้านยาว</em>
+                                                                                                <em>ระบุว่าผนังทิศนี้เป็นด้านสั้นหรือด้านยาว</em>
                                                                                             </MenuItem>
                                                                                             <MenuItem value="Width">ด้านสั้น</MenuItem>
                                                                                             <MenuItem value="Depth">ด้านยาว</MenuItem>
@@ -3071,7 +3071,7 @@ function MainPage() {
                                                                                     required:
                                                                                         item.directionName === "Top" || item.directionName === "Bottom"
                                                                                             ? false
-                                                                                            : "กรุณาเลือกตำแหน่งที่อ้างอิงจากขนาดห้อง",
+                                                                                            : "กรุณาระบุว่าผนังทิศนี้เป็นด้านสั้นหรือด้านยาว",
                                                                                 }}
                                                                                 render={({ field, fieldState }) => (
                                                                                     <FormControl fullWidth error={!!fieldState.error}>
@@ -3089,7 +3089,7 @@ function MainPage() {
                                                                                             }}
                                                                                         >
                                                                                             <MenuItem value="">
-                                                                                                <em>เลือกตำแหน่งที่อ้างอิงจากขนาดห้อง</em>
+                                                                                                <em>ระบุว่าผนังทิศนี้เป็นด้านสั้นหรือด้านยาว</em>
                                                                                             </MenuItem>
                                                                                             <MenuItem value="Width">ด้านสั้น</MenuItem>
                                                                                             <MenuItem value="Depth">ด้านยาว</MenuItem>
