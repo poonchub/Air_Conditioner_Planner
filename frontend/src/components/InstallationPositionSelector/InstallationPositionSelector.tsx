@@ -581,7 +581,7 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                                             <Controller
                                                                 name={`wallValue.${index}.position`}
                                                                 control={control}
-                                                                rules={{ required: "กรุณาเลือกตำแหน่งที่อ้างจากขนาดห้อง" }}
+                                                                rules={{ required: "กรุณาเลือกตำแหน่งที่อ้างอิงจากขนาดห้อง" }}
                                                                 // @ts-ignore
                                                                 render={({ field, fieldState }) => (
                                                                     <FormControl
@@ -607,9 +607,9 @@ const InstallationPositionSelector: React.FC<InstallationPositionSelectorProps> 
                                                                             }}
                                                                         >
                                                                             <MenuItem value="">
-                                                                                <em>เลือกตำแหน่งที่อ้างจากขนาดห้อง</em>
+                                                                                <em>เลือกตำแหน่งที่อ้างอิงจากขนาดห้อง</em>
                                                                             </MenuItem>
-                                                                            <MenuItem value="Width">ด้านกว้าง</MenuItem>
+                                                                            <MenuItem value="Width">ด้านสั้น</MenuItem>
                                                                             <MenuItem value="Depth">ด้านยาว</MenuItem>
                                                                         </Select>
                                                                         {/* {fieldState.error && (

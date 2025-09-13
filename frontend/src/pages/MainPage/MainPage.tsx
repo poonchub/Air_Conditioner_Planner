@@ -2061,7 +2061,7 @@ function MainPage() {
 
     // Cost
     useEffect(() => {
-        const electricityCost = calculateElectricityCost(calculateVariable.recommendedBTU);
+        const electricityCost = calculateElectricityCost(calculateVariable.recommendedBTU * calculateVariable.recommendedUnits);
         console.log("Cost: ", electricityCost);
 
         setCalculateVariable((prev) => ({
@@ -2354,7 +2354,7 @@ function MainPage() {
                                                                             min: { value: 0, message: "ต้องมากกว่า 0" },
                                                                             validate: (value) => {
                                                                                 if (value < formData.width) {
-                                                                                    return "ความลึกต้องไม่น้อยกว่าความกว้าง";
+                                                                                    return "ความยาวต้องไม่น้อยกว่าความกว้าง";
                                                                                 }
                                                                                 return true;
                                                                             },
@@ -2738,7 +2738,7 @@ function MainPage() {
                                                                             <Controller
                                                                                 name={`wallValue.${index}.position`}
                                                                                 control={control}
-                                                                                rules={{ required: "กรุณาเลือกตำแหน่งที่อ้างจากขนาดห้อง" }}
+                                                                                rules={{ required: "กรุณาเลือกตำแหน่งที่อ้างอิงจากขนาดห้อง" }}
                                                                                 render={({ field, fieldState }) => (
                                                                                     <FormControl fullWidth error={!!fieldState.error}>
                                                                                         <Select
@@ -2754,9 +2754,9 @@ function MainPage() {
                                                                                             }}
                                                                                         >
                                                                                             <MenuItem value="">
-                                                                                                <em>เลือกตำแหน่งที่อ้างจากขนาดห้อง</em>
+                                                                                                <em>เลือกตำแหน่งที่อ้างอิงจากขนาดห้อง</em>
                                                                                             </MenuItem>
-                                                                                            <MenuItem value="Width">ด้านกว้าง</MenuItem>
+                                                                                            <MenuItem value="Width">ด้านด้านสั้น</MenuItem>
                                                                                             <MenuItem value="Depth">ด้านยาว</MenuItem>
                                                                                         </Select>
                                                                                         {fieldState.error && (
@@ -3071,7 +3071,7 @@ function MainPage() {
                                                                                     required:
                                                                                         item.directionName === "Top" || item.directionName === "Bottom"
                                                                                             ? false
-                                                                                            : "กรุณาเลือกตำแหน่งที่อ้างจากขนาดห้อง",
+                                                                                            : "กรุณาเลือกตำแหน่งที่อ้างอิงจากขนาดห้อง",
                                                                                 }}
                                                                                 render={({ field, fieldState }) => (
                                                                                     <FormControl fullWidth error={!!fieldState.error}>
@@ -3089,9 +3089,9 @@ function MainPage() {
                                                                                             }}
                                                                                         >
                                                                                             <MenuItem value="">
-                                                                                                <em>เลือกตำแหน่งที่อ้างจากขนาดห้อง</em>
+                                                                                                <em>เลือกตำแหน่งที่อ้างอิงจากขนาดห้อง</em>
                                                                                             </MenuItem>
-                                                                                            <MenuItem value="Width">ด้านกว้าง</MenuItem>
+                                                                                            <MenuItem value="Width">ด้านสั้น</MenuItem>
                                                                                             <MenuItem value="Depth">ด้านยาว</MenuItem>
                                                                                         </Select>
                                                                                         {fieldState.error && (
@@ -3740,7 +3740,10 @@ function MainPage() {
                                                                             <Controller
                                                                                 name={`doorValue.${index}.quantity`}
                                                                                 control={control}
-                                                                                rules={{ required: "กรุณากรอกจำนวนประตู" }}
+                                                                                rules={{ 
+                                                                                    required: "กรุณากรอกจำนวนประตู",
+                                                                                    min: { value: 1, message: "จำนวนต้องไม่น้อยกว่า 1" }
+                                                                                }}
                                                                                 render={({ field, fieldState }) => (
                                                                                     <TextField
                                                                                         type="number"
@@ -4063,7 +4066,10 @@ function MainPage() {
                                                                             <Controller
                                                                                 name={`windowValue.${index}.quantity`}
                                                                                 control={control}
-                                                                                rules={{ required: "กรุณากรอกจำนวนหน้าต่าง" }}
+                                                                                rules={{ 
+                                                                                    required: "กรุณากรอกจำนวนหน้าต่าง",
+                                                                                    min: { value: 1, message: "จำนวนต้องไม่น้อยกว่า 1" }
+                                                                                }}
                                                                                 render={({ field, fieldState }) => (
                                                                                     <TextField
                                                                                         type="number"
@@ -4503,7 +4509,7 @@ function MainPage() {
 
                                             <Box>
                                                 <Text color={"gray"} fontSize={14} marginTop={2}>
-                                                    ค่าไฟข้างต้นเป็นเพียงการประมาณการจากการคำนวณตามอัตราไฟฟ้าแบบขั้นบันได พร้อม Ft และ VAT 7% โดยอิงจากขนาด BTU ของเครื่องปรับอากาศเท่านั้น ค่าไฟจริงอาจสูงหรือต่ำกว่านี้ ขึ้นอยู่กับปริมาณการใช้ไฟฟ้าและพฤติกรรมการใช้งานของผู้ใช้
+                                                    ค่าไฟข้างต้นเป็นการประมาณการจากการคำนวณตามอัตราไฟฟ้าแบบขั้นบันได พร้อม Ft และ VAT 7% โดยอิงจากขนาด BTU ของเครื่องปรับอากาศเท่านั้น  ค่าไฟจริงอาจสูงหรือต่ำกว่านี้ ขึ้นอยู่กับประสิทธิภาพของเครื่องปรับอากาศ ปริมาณการใช้ไฟฟ้าและพฤติกรรมการใช้งานของผู้ใช้ พร้อม Ft และ VAT 7% โดยอิงจากขนาด BTU ของเครื่องปรับอากาศเท่านั้น ค่าไฟจริงอาจสูงหรือต่ำกว่านี้ ขึ้นอยู่กับปริมาณการใช้ไฟฟ้าและพฤติกรรมการใช้งานของผู้ใช้
                                                 </Text>
                                             </Box>
 
@@ -4598,10 +4604,7 @@ function MainPage() {
                                                 })
                                             )
                                     }
-                                </GridItem>
-
-                                <GridItem colSpan={2} display="flex" gap={2} flexDirection={"column"}>
-                                    <Text className="strong-text-blue" marginBottom={1}>คำแนะนำ</Text>
+                                    <Text className="strong-text-blue" marginBottom={1} marginTop={5}>คำแนะนำ</Text>
                                     <Text>
                                         {
                                             airConditionerTypes.find((air) => air.title === selectedOption.selectedAirConditionerType)?.description
