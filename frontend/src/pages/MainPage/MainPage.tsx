@@ -14,15 +14,10 @@ import {
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import "./MainPage.css";
-import { AirVent, FileText, HelpCircle, Home, MapPin } from "lucide-react";
+import { AirVent, FileText, Home, MapPin } from "lucide-react";
 import {
     Chip,
     Collapse,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogContentText,
-    DialogTitle,
     FormControl,
     MenuItem,
     OutlinedInput,
@@ -2211,33 +2206,10 @@ function MainPage() {
         console.log("Form Data:", data);
     };
 
-    const [openTimeDescription, setOpenTimeDescription] = useState(false)
-
     return (
         <Box className="main-page-container">
             {/* <Button onClick={handleClickCalculateAll}>Calculate</Button>
             <Button onClick={handleClickCalculateQTotalAll}>Calculate All</Button> */}
-
-            {/* Time Description */}
-            <Dialog
-                open={openTimeDescription}
-                onClose={() => setOpenTimeDescription(false)}
-            >
-                <DialogTitle>
-                    {"คำอธิบาย"}
-                </DialogTitle>
-                <DialogContent>
-                    <DialogContentText sx={{ color: '#000' }}>
-                        เวลาที่ใช้งานมีผลต่อการคำนวณขนาด BTU หากต้องการขนาด BTU ที่ใช้ได้ในทุกช่วงเวลา แนะนำระบุให้อยู่ในช่วงเวลา 8:00-18.00 น. ตามจำนวนเวลาที่ใช้งาน
-                    </DialogContentText>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpenTimeDescription(false)} autoFocus>
-                        ปิด
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
             <Box
                 width={"100%"}
                 padding={"5rem 2rem"}
@@ -2448,11 +2420,7 @@ function MainPage() {
                                             </GridItem>
                                             <GridItem colSpan={1}>
                                                 <Field.Root>
-                                                    <Field.Label>
-                                                        ช่วงเวลาที่ใช้งาน
-                                                        <HelpCircle size={16} style={{ minWidth: '16px', minHeight: '16px' }} onClick={() => setOpenTimeDescription(true)} />
-                                                    </Field.Label>
-
+                                                    <Field.Label>ช่วงเวลาที่ใช้งาน</Field.Label>
                                                     <Grid templateColumns="repeat(2, 1fr)" width={"100%"} gap={3}>
                                                         {/* เวลาเริ่มต้น */}
                                                         <GridItem colSpan={1}>
@@ -2530,6 +2498,9 @@ function MainPage() {
                                                             />
                                                         </GridItem>
                                                     </Grid>
+                                                    <Text fontSize={14} color={"gray"}>
+                                                        ** เวลาที่ใช้งานมีผลต่อการคำนวณขนาด BTU หากต้องการขนาด BTU ที่ใช้ได้ในทุกช่วงเวลา แนะนำระบุให้อยู่ในช่วงเวลา 8:00-18.00 น. ตามจำนวนเวลาที่ใช้งาน
+                                                    </Text>
                                                 </Field.Root>
                                             </GridItem>
 
@@ -4608,7 +4579,7 @@ function MainPage() {
                                                     return (
                                                         <Box key={index}>
                                                             <Box>
-                                                                <Text marginBottom={1}>สำดับที่ {index + 1}</Text>
+                                                                <Text marginBottom={1}>ตำแหน่งที่ {index + 1}</Text>
                                                             </Box>
                                                             <Box
                                                                 display={'flex'}
