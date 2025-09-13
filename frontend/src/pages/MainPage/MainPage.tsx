@@ -2048,6 +2048,9 @@ function MainPage() {
     // Recommended BTU
     useEffect(() => {
         const targetBTU = calculateVariable.qTotalAll * 3.412;
+
+        console.log("selectedAirConditionerType", selectedOption.selectedAirConditionerType)
+        console.log("selectedAirConditionerType", targetBTU)
         const result = getClosestBTUAirData(BTUAirData, selectedOption.selectedAirConditionerType || "", targetBTU);
         setCalculateVariable((prev) => ({
             ...prev,
