@@ -1076,8 +1076,6 @@ function MainPage() {
         const updatedWallValue = formData.wallValue.map((wall) => {
             if (wall.material !== "Glass") return wall; // skip non-glass walls
 
-            
-
             const cltdGlassData = findCLTDGlassTimeRange(CLTDGlassData, formData.startTime, formData.endTime);
 
             const interpolatedDirection = interpolated.filter((d) => d.Direction === wall.directionName);
@@ -1872,8 +1870,14 @@ function MainPage() {
             calculateVariable.qEquipmentSum +
             calculateVariable.qInfiltration +
             (calculateVariable.maxRecord.qTotal || 0) +
-            calculateVariable.totalQIn;
+            (calculateVariable.totalQIn || 0);
 
+        console.log("qLight:", calculateVariable.qLight);
+        console.log("qPeople:", calculateVariable.qPeople);
+        console.log("qEquipmentSum:", calculateVariable.qEquipmentSum);
+        console.log("qInfiltration:", calculateVariable.qInfiltration);
+        console.log("qTotal:", calculateVariable.maxRecord.qTotal || 0);
+        console.log("totalQIn:", calculateVariable.totalQIn || 0);
         console.log("qTotalAll:", sum);
 
         setCalculateVariable((prev) => ({
@@ -2203,6 +2207,8 @@ function MainPage() {
     const sortedTotalScore = [...calculateVariable.wallScoreAll].sort(
         (a, b) => (b?.wallScore?.totalScore ?? 0) - (a?.wallScore?.totalScore ?? 0)
     );
+
+    const filterSortedTotalScore = sortedTotalScore.filter((item) => item.directionName !== "None")
 
     const onSubmit = (data: FormDataErrorProps) => {
         console.log("Form Data:", data);
@@ -4358,7 +4364,7 @@ function MainPage() {
                                                                 }
                                                             )}
                                                         </Table.Cell>
-                                                        <Table.Cell className="strong-text-blue">BTU</Table.Cell>
+                                                        <Table.Cell className="strong-text-blue">BTU/hr</Table.Cell>
                                                     </Table.Row>
 
                                                     <Table.Row>
@@ -4586,7 +4592,7 @@ function MainPage() {
                                                     </Box>
                                                 </Box>
                                             ) : (
-                                                sortedTotalScore.map((wallScore, index) => {
+                                                filterSortedTotalScore.map((wallScore, index) => {
                                                     return (
                                                         <Box key={index}>
                                                             <Box>
