@@ -14,11 +14,22 @@ export function findGlassCLFnoShadingTimeRange(
 ): GlassCLFnoShadingRow[] {
     const start = parseInt(startTime, 10);
     const end = parseInt(endTime, 10);
+    const dir = direction.toLowerCase();
 
-    return data.filter(
-        (r) =>
-            r.Direction.toLowerCase() === direction.toLowerCase() &&
-            Number(r.Hour) >= start &&
-            Number(r.Hour) <= end
-    );
+    if (end >= start) {
+        // กรณีช่วงเวลาไม่ข้ามวัน เช่น 9 → 17
+        return data.filter(
+            (r) =>
+                r.Direction.toLowerCase() === dir &&
+                Number(r.Hour) >= start &&
+                Number(r.Hour) <= end
+        );
+    } else {
+        // กรณีช่วงเวลาข้ามวัน เช่น 22 → 2
+        return data.filter(
+            (r) =>
+                r.Direction.toLowerCase() === dir &&
+                (Number(r.Hour) >= start || Number(r.Hour) <= end)
+        );
+    }
 }

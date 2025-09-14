@@ -1076,6 +1076,8 @@ function MainPage() {
         const updatedWallValue = formData.wallValue.map((wall) => {
             if (wall.material !== "Glass") return wall; // skip non-glass walls
 
+            
+
             const cltdGlassData = findCLTDGlassTimeRange(CLTDGlassData, formData.startTime, formData.endTime);
 
             const interpolatedDirection = interpolated.filter((d) => d.Direction === wall.directionName);
@@ -4588,7 +4590,7 @@ function MainPage() {
                                                     return (
                                                         <Box key={index}>
                                                             <Box>
-                                                                <Text marginBottom={1}>ตำแหน่งที่ {index + 1}</Text>
+                                                                <Text marginBottom={1}>ลำดับที่ {index + 1}</Text>
                                                             </Box>
                                                             <Box
                                                                 display={'flex'}

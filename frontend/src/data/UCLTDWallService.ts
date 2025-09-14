@@ -24,14 +24,27 @@ export function findUCLTDWallTimeRange(
 ): UCLTDWallRow[] {
     const start = parseInt(startTime, 10);
     const end = parseInt(endTime, 10);
+    const wall = wallType.toLowerCase();
+    const dir = direction.toLowerCase();
 
-    return data.filter(
-        (r) =>
-            r.WallType.toLowerCase() === wallType.toLowerCase() &&
-            r.Direction.toLowerCase() === direction.toLowerCase() &&
-            Number(r.Hour) >= start &&
-            Number(r.Hour) <= end
-    );
+    if (end >= start) {
+        // ✅ ไม่ข้ามวัน เช่น 9 → 17
+        return data.filter(
+            (r) =>
+                r.WallType.toLowerCase() === wall &&
+                r.Direction.toLowerCase() === dir &&
+                Number(r.Hour) >= start &&
+                Number(r.Hour) <= end
+        );
+    } else {
+        // ✅ ข้ามวัน เช่น 22 → 2
+        return data.filter(
+            (r) =>
+                r.WallType.toLowerCase() === wall &&
+                r.Direction.toLowerCase() === dir &&
+                (Number(r.Hour) >= start || Number(r.Hour) <= end)
+        );
+    }
 }
 
 export function findUvalueWall(

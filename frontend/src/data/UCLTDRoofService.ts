@@ -24,14 +24,27 @@ export function findUCLTDRoofTimeRange(
 ): UCLTDRoofRow[] {
     const start = parseInt(startTime, 10);
     const end = parseInt(endTime, 10);
+    const roof = roofType.toLowerCase();
+    const ceil = ceiling.toLowerCase();
 
-    return data.filter(
-        (r) =>
-            r.RoofType.toLowerCase() === roofType.toLowerCase() &&
-            r.Ceiling.toLowerCase() === ceiling.toLowerCase() &&
-            Number(r.Hour) >= start &&
-            Number(r.Hour) <= end
-    );
+    if (end >= start) {
+        // กรณีไม่ข้ามวัน เช่น 9 → 17
+        return data.filter(
+            (r) =>
+                r.RoofType.toLowerCase() === roof &&
+                r.Ceiling.toLowerCase() === ceil &&
+                Number(r.Hour) >= start &&
+                Number(r.Hour) <= end
+        );
+    } else {
+        // กรณีข้ามวัน เช่น 22 → 2
+        return data.filter(
+            (r) =>
+                r.RoofType.toLowerCase() === roof &&
+                r.Ceiling.toLowerCase() === ceil &&
+                (Number(r.Hour) >= start || Number(r.Hour) <= end)
+        );
+    }
 }
 
 export function findUvalue(
