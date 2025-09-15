@@ -406,6 +406,7 @@ function MainPage() {
     const [U_SCglassData, setU_SCglassData] = useState<U_SCglassRow[]>([]);
     const [UfloorInData, setUfloorInData] = useState<UfloorInRow[]>([]);
     const [BTUAirData, setBTUAirData] = useState<BTUAirRow[]>([]);
+    const [calculateStep, setCalculateStep] = useState(0)
 
     const handleDoorDirectionChange = (
         event: SelectChangeEvent<string[]>,
@@ -706,15 +707,15 @@ function MainPage() {
                 selectedOption.buildingType,
                 selectedOption.subRoom
             );
-            // console.log("lightPowerDensity: ", lightPowerDensity)
+            console.log("lightPowerDensity: ", lightPowerDensity)
             setDataFind((prev) => ({ ...prev, lightPowerDensity: lightPowerDensity }));
 
             const totalHeat = findTotalHeat(occupancyHeatGainData, selectedOption.buildingType, selectedOption.subRoom);
-            // console.log("totalHeat: ", totalHeat)
+            console.log("totalHeat: ", totalHeat)
             setDataFind((prev) => ({ ...prev, totalHeat: totalHeat }));
 
             const equipment = getEquipmentOptions(equipmentData, selectedOption.buildingType, selectedOption.subRoom);
-            // console.log("equipment: ", equipment)
+            console.log("equipment: ", equipment)
             setDataFind((prev) => ({ ...prev, equipment: equipment }));
 
             const equipmentValue = equipment.map((eq) => ({
@@ -743,7 +744,7 @@ function MainPage() {
                     (1.1 * ((Number(climatedt?.DB_OutMax) - Number(climatedt?.DB_In)) * 1.8 + 32)) +
                     4748 * (Number(climatedt?.W_Out) - Number(climatedt?.W_In))) *
                 0.29307;
-            // console.log("qInfiltration: ", qInfiltration);
+            console.log("qInfiltration: ", qInfiltration);
             setCalculateVariable((prev) => ({
                 ...prev,
                 qInfiltration: qInfiltration,
@@ -761,7 +762,7 @@ function MainPage() {
         if (formData.ballastFactor && dataFind.lightPowerDensity) {
             const qLight =
                 formData.width * formData.depth * formData.ballastFactor * Number(dataFind.lightPowerDensity);
-            // console.log("qLight: ", qLight);
+            console.log("qLight: ", qLight);
             // console.log("lightPowerDensity: ", dataFind.lightPowerDensity);
             setCalculateVariable((prev) => ({
                 ...prev,
@@ -774,7 +775,7 @@ function MainPage() {
     useEffect(() => {
         if (formData.people && dataFind.totalHeat) {
             const qPeople = formData.people * Number(dataFind.totalHeat);
-            // console.log("qPeople: ", qPeople);
+            console.log("qPeople: ", qPeople);
             setCalculateVariable((prev) => ({
                 ...prev,
                 qPeople: qPeople,
@@ -787,7 +788,7 @@ function MainPage() {
         if (formData.equipmentValue && formData.equipmentValue.length > 0) {
             const sum = formData.equipmentValue.reduce((acc, item) => acc + Number(item.qEquipment || 0), 0);
 
-            // console.log("qEquipmentSum: ", sum);
+            console.log("qEquipmentSum: ", sum);
 
             setCalculateVariable((prev) => ({
                 ...prev,
@@ -958,6 +959,10 @@ function MainPage() {
             formData.width &&
             formData.depth
         ) {
+            console.log("from qWall")
+            console.log("startTime: ", formData.startTime)
+            console.log("endTime: ", formData.endTime)
+
             setFormData((prev) => {
                 const climatedt = getClimateData(climateData, prev.province);
                 const interpolated = interpolateLMByLat(lmWallAndRoofData, Number(climatedt?.Latitude));
@@ -1031,7 +1036,7 @@ function MainPage() {
                 formData.floorValue.uFloor *
                 (Number(climatedt.DB_OutMax) - 2.78 - Number(climatedt.DB_In));
 
-            // console.log("qFloor: ", qFloor)
+            console.log("qFloor: ", qFloor)
 
             setFormData((prev) => {
                 if (prev.floorValue.qFloor === qFloor) {
@@ -1838,12 +1843,12 @@ function MainPage() {
         );
         const { totalQIn } = calculateTotalQIn(formData);
 
-        // console.log("totalQGlassByMonth: ", totalQGlassByMonth);
-        // console.log("totalQSolarByMonth: ", totalQSolarByMonth);
-        // console.log("totalQWallByMonth: ", totalQWallByMonth);
-        // console.log("totalQLoadByMonth: ", totalQLoadByMonth);
+        console.log("totalQGlassByMonth: ", totalQGlassByMonth);
+        console.log("totalQSolarByMonth: ", totalQSolarByMonth);
+        console.log("totalQWallByMonth: ", totalQWallByMonth);
+        console.log("totalQLoadByMonth: ", totalQLoadByMonth);
         console.log("maxRecord: ", maxRecord);
-        // console.log("totalQIn: ", totalQIn);
+        console.log("totalQIn: ", totalQIn);
 
         setCalculateVariable((prev) => ({
             ...prev,
@@ -1854,15 +1859,17 @@ function MainPage() {
             maxRecord: maxRecord ?? [],
             totalQIn,
         }));
+
+        setCalculateStep(1)
     };
 
     const handleClickCalculateQTotalAll = async () => {
-        // console.log("qLight:", calculateVariable.qLight);
-        // console.log("qPeople:", calculateVariable.qPeople);
-        // console.log("qEquipmentSum:", calculateVariable.qEquipmentSum);
-        // console.log("qInfiltration:", calculateVariable.qInfiltration);
-        // console.log("maxRecord.qTotal:", calculateVariable.maxRecord?.qTotal);
-        // console.log("totalQIn:", calculateVariable.totalQIn);
+        console.log("qLight:", calculateVariable.qLight);
+        console.log("qPeople:", calculateVariable.qPeople);
+        console.log("qEquipmentSum:", calculateVariable.qEquipmentSum);
+        console.log("qInfiltration:", calculateVariable.qInfiltration);
+        console.log("maxRecord.qTotal:", calculateVariable.maxRecord?.qTotal);
+        console.log("totalQIn:", calculateVariable.totalQIn);
 
         const sum =
             calculateVariable.qLight +
@@ -1884,6 +1891,8 @@ function MainPage() {
             ...prev,
             qTotalAll: sum,
         }));
+
+        setCalculateStep(2)
 
         calculateVariable.wallScoreAll.map((wallScore) => {
             console.log(`Direction: ${wallScore.directionName}, totalScore: ${wallScore.wallScore?.totalScore}`)
@@ -1988,6 +1997,7 @@ function MainPage() {
         if (hoursUsed <= 0) {
             hoursUsed += 24; // กรณีข้ามวัน
         }
+        console.log("hoursUsed: ", hoursUsed)
 
         const E_kWh_day = P_kW * hoursUsed;
 
@@ -2050,42 +2060,55 @@ function MainPage() {
     };
 
     useEffect(() => {
-        if (tabValue === "five") {
+        console.log("useEffect tabValue:", tabValue)
+        if (tabValue === "five" || tabValue === "three") {
+            console.log("Calculate Process")
             handleClickCalculateAll()
         }
     }, [tabValue])
+    console.log("tabValue: ", tabValue)
 
     useEffect(() => {
-        handleClickCalculateQTotalAll()
-    }, [calculateVariable.maxRecord])
+        if (calculateStep === 1) {
+            handleClickCalculateQTotalAll()
+        }
+    }, [calculateVariable.maxRecord, calculateStep])
 
     // Recommended BTU
     useEffect(() => {
-        const targetBTU = calculateVariable.qTotalAll * 3.412;
+        if (calculateStep === 2) {
+            const targetBTU = calculateVariable.qTotalAll * 3.412;
 
-        console.log("selectedAirConditionerType", selectedOption.selectedAirConditionerType)
-        console.log("selectedAirConditionerType", targetBTU)
-        const result = getClosestBTUAirData(BTUAirData, selectedOption.selectedAirConditionerType || "", targetBTU);
-        setCalculateVariable((prev) => ({
-            ...prev,
-            recommendedBTU: Number(result?.data.BTU),
-            recommendedUnits: Number(result?.recommendedUnits)
-        }));
+            console.log("selectedAirConditionerType", selectedOption.selectedAirConditionerType)
+            console.log("selectedAirConditionerType", targetBTU)
+            const result = getClosestBTUAirData(BTUAirData, selectedOption.selectedAirConditionerType || "", targetBTU);
+            setCalculateVariable((prev) => ({
+                ...prev,
+                recommendedBTU: Number(result?.data.BTU),
+                recommendedUnits: Number(result?.recommendedUnits)
+            }));
 
-        console.log("targetBTU: ", targetBTU)
-        console.log("result: ", result)
-    }, [BTUAirData, calculateVariable.qTotalAll]);
+            console.log("targetBTU: ", targetBTU)
+            console.log("result: ", result)
+            setCalculateStep(3)
+        }
+    }, [BTUAirData, calculateVariable.qTotalAll, calculateStep]);
 
     // Cost
     useEffect(() => {
-        const electricityCost = calculateElectricityCost(calculateVariable.recommendedBTU * calculateVariable.recommendedUnits);
-        console.log("Cost: ", electricityCost);
+        if (calculateStep === 3 || selectedOption.businessSize === "Small" || selectedOption.businessSize === "Large") {
+            console.log("recommendedBTU: ", calculateVariable.recommendedBTU)
+            console.log("businessSize: ", selectedOption.businessSize)
 
-        setCalculateVariable((prev) => ({
-            ...prev,
-            electricityCost: electricityCost,
-        }));
-    }, [calculateVariable.recommendedBTU, selectedOption.businessSize])
+            const electricityCost = calculateElectricityCost(calculateVariable.recommendedBTU * calculateVariable.recommendedUnits);
+            console.log("Cost: ", electricityCost);
+
+            setCalculateVariable((prev) => ({
+                ...prev,
+                electricityCost: electricityCost,
+            }));
+        }
+    }, [calculateVariable.recommendedBTU, selectedOption.businessSize, calculateStep])
 
     // const steps = ["one", "two", "three", "four", "five"];
 
